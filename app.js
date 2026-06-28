@@ -587,19 +587,108 @@
   });
 
   // ---------- Testimonials ----------
+  var testimonialsCache = [];
+
   async function loadTestimonials() {
     var { data, error } = await supabase.from('testimonials').select('*').order('display_order', { ascending: true });
     if (error) { console.error(error); return; }
+    testimonialsCache = data || [];
+
     var list = el('dbmTestimonialsList');
-    if (!list) return;
-    list.innerHTML = '';
-    (data || []).forEach(function (t) {
-      var card = document.createElement('div');
-      card.className = 'dbm-testimonial-card';
-      card.innerHTML = '<p class="dbm-testimonial-quote">&ldquo;' + t.quote + '&rdquo;</p><p class="dbm-testimonial-name">' + t.client_name + '</p>';
-      list.appendChild(card);
+    if (list) {
+      list.innerHTML = '';
+      testimonialsCache.forEach(function (t) {
+        var card = document.createElement('div');
+        card.className = 'dbm-testimonial-card';
+        card.innerHTML = '<p class="dbm-testimonial-quote">&ldquo;' + t.quote + '&rdquo;</p><p class="dbm-testimonial-name">' + t.client_name + '</p>';
+        list.appendChild(card);
+      });
+    }
+  }
+
+  function renderTestimonialsEditList() {
+    var container = el('dbmTestimonialsEditList');
+    container.innerHTML = '';
+    testimonialsCache.forEach(function (t, idx) {
+      var row = document.createElement('div');
+      row.className = 'dbm-testimonial-edit-row';
+      row.innerHTML =
+        '<label>Client name</label>' +
+        '<input type="text" class="dbm-t-name" value="' + (t.client_name || '').replace(/"/g, '&quot;') + '">' +
+        '<label>Quote</label>' +
+        '<textarea class="dbm-t-quote" rows="3">' + (t.quote || '') + '</textarea>' +
+        '<div class="dbm-testimonial-row-actions">' +
+          '<button class="dbm-testimonial-move-btn dbm-t-up" ' + (idx === 0 ? 'disabled' : '') + '>&#8593; Move up</button>' +
+          '<button class="dbm-testimonial-move-btn dbm-t-down" ' + (idx === testimonialsCache.length - 1 ? 'disabled' : '') + '>&#8595; Move down</button>' +
+          '<button class="dbm-testimonial-save-btn dbm-t-save">Save</button>' +
+          '<button class="dbm-testimonial-delete-btn dbm-t-delete">Delete</button>' +
+        '</div>';
+
+      row.querySelector('.dbm-t-save').addEventListener('click', async function () {
+        var name = row.querySelector('.dbm-t-name').value.trim();
+        var quote = row.querySelector('.dbm-t-quote').value.trim();
+        if (!name || !quote) { el('dbmTestimonialsStatus').textContent = 'Name and quote cannot be empty.'; return; }
+        el('dbmTestimonialsStatus').textContent = 'Saving…';
+        var { error } = await supabase.from('testimonials').update({ client_name: name, quote: quote }).eq('id', t.id);
+        if (error) { el('dbmTestimonialsStatus').textContent = 'Could not save: ' + error.message; return; }
+        t.client_name = name; t.quote = quote;
+        el('dbmTestimonialsStatus').textContent = 'Saved.';
+        await loadTestimonials();
+        setTimeout(function () { el('dbmTestimonialsStatus').textContent = ''; }, 1200);
+      });
+
+      row.querySelector('.dbm-t-delete').addEventListener('click', async function () {
+        var confirmed = confirm('Delete this testimonial permanently?');
+        if (!confirmed) return;
+        await supabase.from('testimonials').delete().eq('id', t.id);
+        await loadTestimonials();
+        renderTestimonialsEditList();
+      });
+
+      row.querySelector('.dbm-t-up').addEventListener('click', async function () {
+        await moveTestimonial(idx, -1);
+      });
+      row.querySelector('.dbm-t-down').addEventListener('click', async function () {
+        await moveTestimonial(idx, 1);
+      });
+
+      container.appendChild(row);
     });
   }
+
+  async function moveTestimonial(idx, offset) {
+    var newIdx = idx + offset;
+    if (newIdx < 0 || newIdx >= testimonialsCache.length) return;
+    var reordered = testimonialsCache.slice();
+    var moved = reordered.splice(idx, 1)[0];
+    reordered.splice(newIdx, 0, moved);
+    var updates = reordered.map(function (t, i) {
+      return supabase.from('testimonials').update({ display_order: i }).eq('id', t.id);
+    });
+    await Promise.all(updates);
+    await loadTestimonials();
+    renderTestimonialsEditList();
+  }
+
+  el('dbmTestimonialsBtn').addEventListener('click', function () {
+    el('dbmTestimonialsStatus').textContent = '';
+    renderTestimonialsEditList();
+    el('dbmTestimonialsModalBackdrop').classList.add('show');
+  });
+  el('dbmCancelTestimonials').addEventListener('click', function () { el('dbmTestimonialsModalBackdrop').classList.remove('show'); });
+  el('dbmTestimonialsModalBackdrop').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
+
+  el('dbmAddTestimonialBtn').addEventListener('click', async function () {
+    var maxOrder = testimonialsCache.reduce(function (m, t) { return Math.max(m, t.display_order || 0); }, -1);
+    var { error } = await supabase.from('testimonials').insert({
+      client_name: 'New client',
+      quote: 'Edit this quote…',
+      display_order: maxOrder + 1
+    });
+    if (error) { el('dbmTestimonialsStatus').textContent = 'Could not add: ' + error.message; return; }
+    await loadTestimonials();
+    renderTestimonialsEditList();
+  });
 
   // ---------- Contact form ----------
   el('dbmContactForm').addEventListener('submit', async function (e) {
@@ -646,6 +735,11 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   window.dbmShowSection = dbmShowSection;
+
+  el('dbmLogoHome').addEventListener('click', function () { dbmShowSection('work'); });
+  el('dbmLogoHome').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dbmShowSection('work'); }
+  });
   document.querySelectorAll('.dbm-nav button').forEach(function (btn) {
     btn.addEventListener('click', function () { dbmShowSection(btn.getAttribute('data-section')); });
   });
