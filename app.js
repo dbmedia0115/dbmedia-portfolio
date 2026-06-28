@@ -1,10 +1,10 @@
 // Dream Big Media portfolio — Supabase-backed version
-// Same look and interactions as the original, but shoots/photos live in a
-// real database instead of being hardcoded, and admin actions require login.
+// Photos and videos both use the same generic gallery controller below,
+// configured with their own tables/elements. Site settings, testimonials,
+// contact form, and section navigation are handled separately.
 
 (function () {
   var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-  var STORAGE_BUCKET = 'photos';
 
   var FAQS = [
     { q: 'How far in advance should I book?', a: 'For events and weddings, 2-4 weeks ahead is ideal so we can lock in your date. For portrait or fashion shoots, a few days notice usually works, but earlier is always better, especially for weekends.' },
@@ -17,31 +17,18 @@
 
   function el(id) { return document.getElementById(id); }
 
-  // ---------- State ----------
-  var shoots = [];           // [{ id, category, display_order, cover_photo_id, photos: [...] }]
-  var currentFilter = 'all';
   var isAdmin = false;
-  var organizeMode = false;
-  var mergeSelection = [];
+  var adminUIRefreshers = [];
 
-  // ---------- Auth ----------
   function refreshAdminUI() {
     el('dbmAdminBar').classList.toggle('show', isAdmin);
-    el('dbmUploadBtn').style.display = isAdmin ? 'inline-flex' : 'none';
-    el('dbmOrganizeBtn').style.display = isAdmin ? 'inline-block' : 'none';
     el('dbmLoginTrigger').style.display = isAdmin ? 'none' : 'flex';
-    if (!isAdmin) {
-      organizeMode = false;
-      mergeSelection = [];
-      el('dbmOrganizeHint').style.display = 'none';
-    }
-    updateMergeButton();
+    adminUIRefreshers.forEach(function (fn) { fn(); });
   }
 
   supabase.auth.onAuthStateChange(function (event, session) {
     isAdmin = !!session;
     refreshAdminUI();
-    renderGallery();
   });
 
   async function checkSession() {
@@ -50,15 +37,9 @@
     refreshAdminUI();
   }
 
-  el('dbmLoginTrigger').addEventListener('click', function () {
-    el('dbmLoginOverlay').classList.add('show');
-  });
-  el('dbmLoginCancel').addEventListener('click', function () {
-    el('dbmLoginOverlay').classList.remove('show');
-  });
-  el('dbmLoginOverlay').addEventListener('click', function (e) {
-    if (e.target === this) this.classList.remove('show');
-  });
+  el('dbmLoginTrigger').addEventListener('click', function () { el('dbmLoginOverlay').classList.add('show'); });
+  el('dbmLoginCancel').addEventListener('click', function () { el('dbmLoginOverlay').classList.remove('show'); });
+  el('dbmLoginOverlay').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
   el('dbmLoginSubmit').addEventListener('click', async function () {
     var email = el('dbmLoginEmail').value.trim();
     var password = el('dbmLoginPassword').value;
@@ -75,60 +56,449 @@
       el('dbmLoginPassword').value = '';
     }
   });
-  el('dbmLogoutBtn').addEventListener('click', async function () {
-    await supabase.auth.signOut();
-  });
+  el('dbmLogoutBtn').addEventListener('click', async function () { await supabase.auth.signOut(); });
 
-  // ---------- Data loading ----------
-  function storagePublicUrl(path) {
-    var { data } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path);
-    return data.publicUrl;
-  }
+  // ===================================================================
+  // Generic gallery controller — used once for photos, once for videos
+  // ===================================================================
+  function createGalleryController(cfg) {
+    var state = {
+      shoots: [],
+      currentFilter: 'all',
+      organizeMode: false,
+      mergeSelection: [],
+      dragSrcId: null
+    };
 
-  async function loadShoots() {
-    el('dbmLoading').style.display = 'block';
-    var { data: shootRows, error: shootErr } = await supabase
-      .from('shoots')
-      .select('*')
-      .order('display_order', { ascending: true });
-
-    var { data: photoRows, error: photoErr } = await supabase
-      .from('photos')
-      .select('*')
-      .order('display_order', { ascending: true });
-
-    el('dbmLoading').style.display = 'none';
-
-    if (shootErr || photoErr) {
-      console.error(shootErr || photoErr);
-      el('dbmEmpty').textContent = 'Could not load the gallery. Please refresh.';
-      el('dbmEmpty').style.display = 'block';
-      return;
+    function storagePublicUrl(path) {
+      var { data } = supabase.storage.from(cfg.bucket).getPublicUrl(path);
+      return data.publicUrl;
     }
 
-    var photosByShoot = {};
-    (photoRows || []).forEach(function (p) {
-      p.url = storagePublicUrl(p.storage_path);
-      if (!photosByShoot[p.shoot_id]) photosByShoot[p.shoot_id] = [];
-      photosByShoot[p.shoot_id].push(p);
+    async function loadShoots() {
+      el(cfg.els.loading).style.display = 'block';
+      var { data: shootRows, error: shootErr } = await supabase
+        .from(cfg.shootTable).select('*').order('display_order', { ascending: true });
+      var { data: itemRows, error: itemErr } = await supabase
+        .from(cfg.itemTable).select('*').order('display_order', { ascending: true });
+
+      el(cfg.els.loading).style.display = 'none';
+
+      if (shootErr || itemErr) {
+        console.error(shootErr || itemErr);
+        el(cfg.els.empty).textContent = 'Could not load this gallery. Please refresh.';
+        el(cfg.els.empty).style.display = 'block';
+        return;
+      }
+
+      var itemsByShoot = {};
+      (itemRows || []).forEach(function (it) {
+        it.url = storagePublicUrl(it.storage_path);
+        if (!itemsByShoot[it[cfg.itemShootFk]]) itemsByShoot[it[cfg.itemShootFk]] = [];
+        itemsByShoot[it[cfg.itemShootFk]].push(it);
+      });
+
+      state.shoots = (shootRows || []).map(function (s) {
+        var items = itemsByShoot[s.id] || [];
+        var cover = items.find(function (it) { return it.id === s[cfg.coverFk]; }) || items[0];
+        var shoot = { id: s.id, category: s.category, display_order: s.display_order, cover: cover, items: items };
+        shoot[cfg.coverFk] = s[cfg.coverFk];
+        return shoot;
+      }).filter(function (s) { return s.items.length > 0; });
+
+      renderGallery();
+      populateShootSelect();
+    }
+
+    function renderCounts() {
+      var counts = { all: state.shoots.length, events: 0, portraits: 0, fashion: 0 };
+      state.shoots.forEach(function (s) { if (counts[s.category] !== undefined) counts[s.category]++; });
+      Object.keys(counts).forEach(function (key) {
+        var node = el(cfg.els.countPrefix + key);
+        if (node) node.textContent = counts[key];
+      });
+    }
+
+    function mediaTag(item, extraAttrs) {
+      if (cfg.mediaType === 'video') {
+        return '<video src="' + item.url + '" ' + (extraAttrs || '') + ' muted playsinline preload="metadata"></video>';
+      }
+      return '<img src="' + item.url + '" alt="' + cfg.sectionName + ' media" loading="lazy" ' + (extraAttrs || '') + '>';
+    }
+
+    function renderGallery() {
+      var gallery = el(cfg.els.gallery);
+      var filtered = state.currentFilter === 'all' ? state.shoots : state.shoots.filter(function (s) { return s.category === state.currentFilter; });
+      gallery.innerHTML = '';
+      el(cfg.els.empty).style.display = (filtered.length === 0 && state.shoots.length > 0) ? 'block' : 'none';
+
+      filtered.forEach(function (shoot, idx) {
+        var cover = shoot.cover;
+        if (!cover) return;
+        var card = document.createElement('div');
+        card.className = 'dbm-card' + (state.organizeMode ? ' organize-mode' : '');
+        card.setAttribute('data-shoot-id', shoot.id);
+        if (state.mergeSelection.indexOf(shoot.id) !== -1) card.classList.add('merge-selected');
+
+        card.innerHTML =
+          mediaTag(cover) +
+          '<span class="dbm-card-tag">' + shoot.category + '</span>' +
+          (state.organizeMode ? '<button class="dbm-card-cover-btn" aria-label="Manage media"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></button>' : '') +
+          (state.organizeMode ? '<div class="dbm-card-move"><button class="dbm-move-left" aria-label="Move earlier" ' + (idx === 0 ? 'disabled' : '') + '>&#8249;</button><button class="dbm-move-right" aria-label="Move later" ' + (idx === filtered.length - 1 ? 'disabled' : '') + '>&#8250;</button></div>' : '');
+
+        var mediaEl = card.querySelector(cfg.mediaType === 'video' ? 'video' : 'img');
+        mediaEl.addEventListener('click', function () {
+          if (state.organizeMode) {
+            toggleMergeSelection(shoot.id, card);
+          } else {
+            openLightbox(shoot, cover, cfg.mediaType);
+          }
+        });
+
+        var coverBtn = card.querySelector('.dbm-card-cover-btn');
+        if (coverBtn) coverBtn.addEventListener('click', function (e) { e.stopPropagation(); openCoverPicker(shoot); });
+
+        var moveLeftBtn = card.querySelector('.dbm-move-left');
+        var moveRightBtn = card.querySelector('.dbm-move-right');
+        if (moveLeftBtn) moveLeftBtn.addEventListener('click', function (e) { e.stopPropagation(); moveShoot(shoot.id, -1, filtered); });
+        if (moveRightBtn) moveRightBtn.addEventListener('click', function (e) { e.stopPropagation(); moveShoot(shoot.id, 1, filtered); });
+
+        if (state.organizeMode) {
+          card.draggable = true;
+          card.addEventListener('dragstart', function () { state.dragSrcId = shoot.id; card.classList.add('dragging'); });
+          card.addEventListener('dragend', function () { card.classList.remove('dragging'); });
+          card.addEventListener('dragover', function (e) { e.preventDefault(); card.classList.add('drag-over'); });
+          card.addEventListener('dragleave', function () { card.classList.remove('drag-over'); });
+          card.addEventListener('drop', function (e) {
+            e.preventDefault();
+            card.classList.remove('drag-over');
+            if (!state.dragSrcId || state.dragSrcId === shoot.id) return;
+            reorderShoots(state.dragSrcId, shoot.id, filtered);
+          });
+        }
+
+        gallery.appendChild(card);
+      });
+
+      renderCounts();
+    }
+
+    async function persistOrder(orderedShoots) {
+      var updates = orderedShoots.map(function (s, idx) {
+        return supabase.from(cfg.shootTable).update({ display_order: idx }).eq('id', s.id);
+      });
+      await Promise.all(updates);
+    }
+
+    async function moveShoot(id, offset, currentList) {
+      var idx = currentList.findIndex(function (s) { return s.id === id; });
+      var newIdx = idx + offset;
+      if (idx === -1 || newIdx < 0 || newIdx >= currentList.length) return;
+      var reordered = currentList.slice();
+      var moved = reordered.splice(idx, 1)[0];
+      reordered.splice(newIdx, 0, moved);
+      reordered.forEach(function (s, i) { s.display_order = i; });
+      renderGallery();
+      await persistOrder(reordered);
+    }
+
+    async function reorderShoots(srcId, targetId, currentList) {
+      var srcIdx = currentList.findIndex(function (s) { return s.id === srcId; });
+      var targetIdx = currentList.findIndex(function (s) { return s.id === targetId; });
+      if (srcIdx === -1 || targetIdx === -1) return;
+      var reordered = currentList.slice();
+      var moved = reordered.splice(srcIdx, 1)[0];
+      reordered.splice(targetIdx, 0, moved);
+      reordered.forEach(function (s, i) { s.display_order = i; });
+      renderGallery();
+      await persistOrder(reordered);
+    }
+
+    function openCoverPicker(shoot) {
+      var grid = el(cfg.els.coverGrid);
+      grid.innerHTML = '';
+      shoot.items.forEach(function (item) {
+        var pick = document.createElement('div');
+        pick.className = 'dbm-cover-pick' + (item.id === shoot.cover.id ? ' is-current' : '');
+        pick.innerHTML =
+          mediaTag(item) +
+          '<button class="dbm-cover-delete" aria-label="Delete this item" title="Delete">&times;</button>';
+
+        pick.querySelector(cfg.mediaType === 'video' ? 'video' : 'img').addEventListener('click', async function () {
+          shoot.cover = item;
+          shoot[cfg.coverFk] = item.id;
+          el(cfg.els.coverModal).classList.remove('show');
+          renderGallery();
+          var patch = {}; patch[cfg.coverFk] = item.id;
+          await supabase.from(cfg.shootTable).update(patch).eq('id', shoot.id);
+        });
+
+        pick.querySelector('.dbm-cover-delete').addEventListener('click', async function (e) {
+          e.stopPropagation();
+          if (shoot.items.length <= 1) {
+            alert('This is the only item in this shoot. Delete the whole shoot from Organize mode instead, or add another item first.');
+            return;
+          }
+          var confirmed = confirm('Delete this permanently? This cannot be undone.');
+          if (!confirmed) return;
+
+          await supabase.storage.from(cfg.bucket).remove([item.storage_path]);
+          await supabase.from(cfg.itemTable).delete().eq('id', item.id);
+
+          shoot.items = shoot.items.filter(function (p) { return p.id !== item.id; });
+          if (shoot.cover.id === item.id) {
+            shoot.cover = shoot.items[0];
+            shoot[cfg.coverFk] = shoot.items[0].id;
+            var patch2 = {}; patch2[cfg.coverFk] = shoot.cover.id;
+            await supabase.from(cfg.shootTable).update(patch2).eq('id', shoot.id);
+          }
+          renderGallery();
+          openCoverPicker(shoot);
+        });
+
+        grid.appendChild(pick);
+      });
+      el(cfg.els.coverModal).classList.add('show');
+    }
+    el(cfg.els.cancelCover).addEventListener('click', function () { el(cfg.els.coverModal).classList.remove('show'); });
+    el(cfg.els.coverModal).addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
+
+    el(cfg.els.organizeBtn).addEventListener('click', function () {
+      state.organizeMode = !state.organizeMode;
+      this.classList.toggle('active', state.organizeMode);
+      el(cfg.els.organizeHint).style.display = state.organizeMode ? 'block' : 'none';
+      if (!state.organizeMode) state.mergeSelection = [];
+      updateMergeButton();
+      renderGallery();
     });
 
-    shoots = (shootRows || []).map(function (s) {
-      var photos = photosByShoot[s.id] || [];
-      var cover = photos.find(function (p) { return p.id === s.cover_photo_id; }) || photos[0];
-      return {
-        id: s.id,
-        category: s.category,
-        display_order: s.display_order,
-        cover_photo_id: s.cover_photo_id,
-        cover: cover,
-        photos: photos
-      };
-    }).filter(function (s) { return s.photos.length > 0; });
+    function toggleMergeSelection(id, cardEl) {
+      var idx = state.mergeSelection.indexOf(id);
+      if (idx === -1) { state.mergeSelection.push(id); cardEl.classList.add('merge-selected'); }
+      else { state.mergeSelection.splice(idx, 1); cardEl.classList.remove('merge-selected'); }
+      updateMergeButton();
+    }
 
-    renderGallery();
-    populateShootSelect();
+    function updateMergeButton() {
+      var btn = el(cfg.els.mergeBtn);
+      el(cfg.els.mergeCount).textContent = state.mergeSelection.length;
+      btn.style.display = (isAdmin && state.organizeMode) ? 'inline-block' : 'none';
+      btn.disabled = state.mergeSelection.length < 2;
+    }
+
+    el(cfg.els.mergeBtn).addEventListener('click', async function () {
+      if (state.mergeSelection.length < 2) return;
+      var targetId = state.mergeSelection[0];
+      var othersIds = state.mergeSelection.slice(1);
+
+      for (var i = 0; i < othersIds.length; i++) {
+        var patch = {}; patch[cfg.itemShootFk] = targetId;
+        await supabase.from(cfg.itemTable).update(patch).eq(cfg.itemShootFk, othersIds[i]);
+        await supabase.from(cfg.shootTable).delete().eq('id', othersIds[i]);
+      }
+
+      state.mergeSelection = [];
+      updateMergeButton();
+      await loadShoots();
+    });
+
+    function refreshGalleryAdminUI() {
+      el(cfg.els.uploadBtn).style.display = isAdmin ? 'inline-flex' : 'none';
+      el(cfg.els.organizeBtn).style.display = isAdmin ? 'inline-block' : 'none';
+      if (!isAdmin) {
+        state.organizeMode = false;
+        state.mergeSelection = [];
+        el(cfg.els.organizeHint).style.display = 'none';
+      }
+      updateMergeButton();
+      renderGallery();
+    }
+    adminUIRefreshers.push(refreshGalleryAdminUI);
+
+    document.querySelectorAll('[' + cfg.els.filterAttr + ']').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('[' + cfg.els.filterAttr + ']').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        state.currentFilter = btn.getAttribute(cfg.els.filterAttr);
+        renderGallery();
+      });
+    });
+
+    var uploadModal = el(cfg.els.uploadModal);
+    el(cfg.els.uploadBtn).addEventListener('click', function () {
+      el(cfg.els.uploadStatus).textContent = '';
+      populateShootSelect();
+      uploadModal.classList.add('show');
+    });
+    el(cfg.els.cancelUpload).addEventListener('click', function () {
+      uploadModal.classList.remove('show');
+      el(cfg.els.fileInput).value = '';
+    });
+    uploadModal.addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
+
+    function populateShootSelect() {
+      var select = el(cfg.els.shootSelect);
+      var currentVal = select.value;
+      select.innerHTML = '<option value="__new__">+ Create new shoot</option>';
+      state.shoots.forEach(function (s) {
+        var opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.category + ' — ' + s.items.length + ' item(s)';
+        select.appendChild(opt);
+      });
+      if (currentVal) select.value = currentVal;
+    }
+
+    function fileExt(filename, fallback) {
+      var m = /\.([a-zA-Z0-9]+)$/.exec(filename);
+      return m ? m[1].toLowerCase() : fallback;
+    }
+
+    el(cfg.els.saveUpload).addEventListener('click', async function () {
+      var fileInput = el(cfg.els.fileInput);
+      var category = el(cfg.els.catSelect).value;
+      var shootChoice = el(cfg.els.shootSelect).value;
+      var status = el(cfg.els.uploadStatus);
+
+      if (!fileInput.files || !fileInput.files.length) {
+        status.textContent = 'Choose at least one file.';
+        return;
+      }
+      status.textContent = 'Uploading…';
+
+      try {
+        var shootId = shootChoice;
+        if (shootChoice === '__new__') {
+          var maxOrder = state.shoots.reduce(function (m, s) { return Math.max(m, s.display_order || 0); }, -1);
+          var { data: newShoot, error: shootErr } = await supabase
+            .from(cfg.shootTable).insert({ category: category, display_order: maxOrder + 1 }).select().single();
+          if (shootErr) throw shootErr;
+          shootId = newShoot.id;
+        }
+
+        var files = Array.from(fileInput.files);
+        for (var i = 0; i < files.length; i++) {
+          var file = files[i];
+          var path = shootId + '/' + Date.now() + '-' + i + '.' + fileExt(file.name, cfg.mediaType === 'video' ? 'mp4' : 'jpg');
+          var { error: uploadErr } = await supabase.storage.from(cfg.bucket).upload(path, file);
+          if (uploadErr) throw uploadErr;
+
+          var itemPayload = { storage_path: path, display_order: i };
+          itemPayload[cfg.itemShootFk] = shootId;
+          var { data: itemRow, error: itemErr } = await supabase
+            .from(cfg.itemTable).insert(itemPayload).select().single();
+          if (itemErr) throw itemErr;
+
+          if (shootChoice === '__new__' && i === 0) {
+            var patch = {}; patch[cfg.coverFk] = itemRow.id;
+            await supabase.from(cfg.shootTable).update(patch).eq('id', shootId);
+          }
+        }
+
+        status.textContent = 'Added.';
+        await loadShoots();
+        setTimeout(function () {
+          uploadModal.classList.remove('show');
+          fileInput.value = '';
+          status.textContent = '';
+        }, 700);
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'Upload failed: ' + (err.message || 'try a smaller file.');
+      }
+    });
+
+    return { loadShoots: loadShoots, renderGallery: renderGallery };
   }
+
+  // ---------- Lightbox (shared by photos and videos) ----------
+  var lightboxSet = [];
+  var lightboxIndex = 0;
+  var lightboxMediaType = 'image';
+
+  function showLightboxItem() {
+    var item = lightboxSet[lightboxIndex];
+    var imgEl = el('dbmLightboxImg');
+    var videoEl = el('dbmLightboxVideo');
+    if (lightboxMediaType === 'video') {
+      imgEl.style.display = 'none';
+      videoEl.style.display = 'block';
+      videoEl.src = item.url;
+      videoEl.muted = false;
+    } else {
+      videoEl.pause();
+      videoEl.style.display = 'none';
+      imgEl.style.display = 'block';
+      imgEl.src = item.url;
+    }
+    var counter = el('dbmLightboxCounter');
+    var prevBtn = el('dbmLightboxPrev');
+    var nextBtn = el('dbmLightboxNext');
+    if (lightboxSet.length > 1) {
+      counter.textContent = (lightboxIndex + 1) + ' / ' + lightboxSet.length;
+      counter.style.display = 'block';
+      prevBtn.style.display = 'flex';
+      nextBtn.style.display = 'flex';
+    } else {
+      counter.style.display = 'none';
+      prevBtn.style.display = 'none';
+      nextBtn.style.display = 'none';
+    }
+  }
+  function openLightbox(shoot, item, mediaType) {
+    lightboxSet = shoot.items;
+    lightboxMediaType = mediaType;
+    lightboxIndex = lightboxSet.findIndex(function (p) { return p.id === item.id; });
+    if (lightboxIndex < 0) lightboxIndex = 0;
+    showLightboxItem();
+    el('dbmLightbox').classList.add('show');
+  }
+  function closeLightbox() {
+    el('dbmLightbox').classList.remove('show');
+    el('dbmLightboxImg').src = '';
+    el('dbmLightboxVideo').pause();
+    el('dbmLightboxVideo').src = '';
+    lightboxSet = [];
+    lightboxIndex = 0;
+  }
+  function lightboxPrev() { if (!lightboxSet.length) return; lightboxIndex = (lightboxIndex - 1 + lightboxSet.length) % lightboxSet.length; showLightboxItem(); }
+  function lightboxNext() { if (!lightboxSet.length) return; lightboxIndex = (lightboxIndex + 1) % lightboxSet.length; showLightboxItem(); }
+
+  el('dbmLightboxClose').addEventListener('click', closeLightbox);
+  el('dbmLightboxPrev').addEventListener('click', function (e) { e.stopPropagation(); lightboxPrev(); });
+  el('dbmLightboxNext').addEventListener('click', function (e) { e.stopPropagation(); lightboxNext(); });
+  el('dbmLightbox').addEventListener('click', function (e) { if (e.target === this) closeLightbox(); });
+  document.addEventListener('keydown', function (e) {
+    if (!el('dbmLightbox').classList.contains('show')) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') lightboxPrev();
+    if (e.key === 'ArrowRight') lightboxNext();
+  });
+
+  // ---------- Instantiate the two galleries ----------
+  var photoGallery = createGalleryController({
+    shootTable: 'shoots', itemTable: 'photos', itemShootFk: 'shoot_id', coverFk: 'cover_photo_id',
+    bucket: 'photos', mediaType: 'image', sectionName: 'photo',
+    els: {
+      gallery: 'dbmGallery', loading: 'dbmLoading', empty: 'dbmEmpty', filterAttr: 'data-filter',
+      countPrefix: 'cnt-', uploadBtn: 'dbmUploadBtn', organizeBtn: 'dbmOrganizeBtn', organizeHint: 'dbmOrganizeHint',
+      mergeBtn: 'dbmMergeBtn', mergeCount: 'dbmMergeCount', uploadModal: 'dbmModalBackdrop', fileInput: 'dbmFileInput',
+      catSelect: 'dbmCatSelect', shootSelect: 'dbmShootSelect', saveUpload: 'dbmSaveUpload', cancelUpload: 'dbmCancelUpload',
+      uploadStatus: 'dbmUploadStatus', coverModal: 'dbmCoverModalBackdrop', coverGrid: 'dbmCoverGrid', cancelCover: 'dbmCancelCover'
+    }
+  });
+
+  var videoGallery = createGalleryController({
+    shootTable: 'video_shoots', itemTable: 'videos', itemShootFk: 'shoot_id', coverFk: 'cover_video_id',
+    bucket: 'videos', mediaType: 'video', sectionName: 'video',
+    els: {
+      gallery: 'dbmVideoGallery', loading: 'dbmVideoLoading', empty: 'dbmVideoEmpty', filterAttr: 'data-vfilter',
+      countPrefix: 'vcnt-', uploadBtn: 'dbmUploadVideoBtn', organizeBtn: 'dbmOrganizeVideoBtn', organizeHint: 'dbmOrganizeVideoHint',
+      mergeBtn: 'dbmMergeVideoBtn', mergeCount: 'dbmMergeVideoCount', uploadModal: 'dbmVideoModalBackdrop', fileInput: 'dbmVideoFileInput',
+      catSelect: 'dbmVideoCatSelect', shootSelect: 'dbmVideoShootSelect', saveUpload: 'dbmSaveVideoUpload', cancelUpload: 'dbmCancelVideoUpload',
+      uploadStatus: 'dbmVideoUploadStatus', coverModal: 'dbmVideoCoverModalBackdrop', coverGrid: 'dbmVideoCoverGrid', cancelCover: 'dbmCancelVideoCover'
+    }
+  });
 
   // ---------- Site settings (editable text + colors) ----------
   var siteSettings = {};
@@ -157,6 +527,7 @@
 
     if (siteSettings.social_instagram) {
       el('dbmContactInstagram').href = siteSettings.social_instagram;
+      el('dbmFollowInstagram').href = siteSettings.social_instagram;
       el('dbmSocialInstagram').href = siteSettings.social_instagram;
     }
     if (siteSettings.social_tiktok) el('dbmSocialTiktok').href = siteSettings.social_tiktok;
@@ -215,6 +586,21 @@
     }
   });
 
+  // ---------- Testimonials ----------
+  async function loadTestimonials() {
+    var { data, error } = await supabase.from('testimonials').select('*').order('display_order', { ascending: true });
+    if (error) { console.error(error); return; }
+    var list = el('dbmTestimonialsList');
+    if (!list) return;
+    list.innerHTML = '';
+    (data || []).forEach(function (t) {
+      var card = document.createElement('div');
+      card.className = 'dbm-testimonial-card';
+      card.innerHTML = '<p class="dbm-testimonial-quote">&ldquo;' + t.quote + '&rdquo;</p><p class="dbm-testimonial-name">' + t.client_name + '</p>';
+      list.appendChild(card);
+    });
+  }
+
   // ---------- Contact form ----------
   el('dbmContactForm').addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -247,237 +633,10 @@
     }
   });
 
-  
-  function renderCounts() {
-    var counts = { all: shoots.length, events: 0, portraits: 0, fashion: 0 };
-    shoots.forEach(function (s) { if (counts[s.category] !== undefined) counts[s.category]++; });
-    el('cnt-all').textContent = counts.all;
-    el('cnt-events').textContent = counts.events;
-    el('cnt-portraits').textContent = counts.portraits;
-    el('cnt-fashion').textContent = counts.fashion;
-  }
-
-  var dragSrcId = null;
-
-  function renderGallery() {
-    var gallery = el('dbmGallery');
-    var filtered = currentFilter === 'all' ? shoots : shoots.filter(function (s) { return s.category === currentFilter; });
-    gallery.innerHTML = '';
-    el('dbmEmpty').style.display = (filtered.length === 0 && shoots.length > 0) ? 'block' : 'none';
-
-    filtered.forEach(function (shoot, idx) {
-      var cover = shoot.cover;
-      if (!cover) return;
-      var card = document.createElement('div');
-      card.className = 'dbm-card' + (organizeMode ? ' organize-mode' : '');
-      card.setAttribute('data-shoot-id', shoot.id);
-      if (mergeSelection.indexOf(shoot.id) !== -1) card.classList.add('merge-selected');
-
-      card.innerHTML =
-        '<img src="' + cover.url + '" alt="' + shoot.category + ' photo" loading="lazy">' +
-        '<span class="dbm-card-tag">' + shoot.category + '</span>' +
-        (organizeMode ? '<button class="dbm-card-cover-btn" aria-label="Change cover photo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></button>' : '') +
-        (organizeMode ? '<div class="dbm-card-move"><button class="dbm-move-left" aria-label="Move earlier" ' + (idx === 0 ? 'disabled' : '') + '>&#8249;</button><button class="dbm-move-right" aria-label="Move later" ' + (idx === filtered.length - 1 ? 'disabled' : '') + '>&#8250;</button></div>' : '');
-
-      var imgEl = card.querySelector('img');
-      imgEl.addEventListener('click', function () {
-        if (organizeMode) {
-          toggleMergeSelection(shoot.id, card);
-        } else {
-          openLightbox(shoot, cover);
-        }
-      });
-
-      var coverBtn = card.querySelector('.dbm-card-cover-btn');
-      if (coverBtn) {
-        coverBtn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          openCoverPicker(shoot);
-        });
-      }
-
-      var moveLeftBtn = card.querySelector('.dbm-move-left');
-      var moveRightBtn = card.querySelector('.dbm-move-right');
-      if (moveLeftBtn) moveLeftBtn.addEventListener('click', function (e) { e.stopPropagation(); moveShoot(shoot.id, -1, filtered); });
-      if (moveRightBtn) moveRightBtn.addEventListener('click', function (e) { e.stopPropagation(); moveShoot(shoot.id, 1, filtered); });
-
-      if (organizeMode) {
-        card.draggable = true;
-        card.addEventListener('dragstart', function () { dragSrcId = shoot.id; card.classList.add('dragging'); });
-        card.addEventListener('dragend', function () { card.classList.remove('dragging'); });
-        card.addEventListener('dragover', function (e) { e.preventDefault(); card.classList.add('drag-over'); });
-        card.addEventListener('dragleave', function () { card.classList.remove('drag-over'); });
-        card.addEventListener('drop', function (e) {
-          e.preventDefault();
-          card.classList.remove('drag-over');
-          if (!dragSrcId || dragSrcId === shoot.id) return;
-          reorderShoots(dragSrcId, shoot.id, filtered);
-        });
-      }
-
-      gallery.appendChild(card);
-    });
-
-    renderCounts();
-  }
-
-  // ---------- Reordering (writes back to Supabase) ----------
-  async function persistOrder(orderedShoots) {
-    var updates = orderedShoots.map(function (s, idx) {
-      return supabase.from('shoots').update({ display_order: idx }).eq('id', s.id);
-    });
-    await Promise.all(updates);
-  }
-
-  async function moveShoot(id, offset, currentList) {
-    var idx = currentList.findIndex(function (s) { return s.id === id; });
-    var newIdx = idx + offset;
-    if (idx === -1 || newIdx < 0 || newIdx >= currentList.length) return;
-    var reordered = currentList.slice();
-    var moved = reordered.splice(idx, 1)[0];
-    reordered.splice(newIdx, 0, moved);
-    reordered.forEach(function (s, i) { s.display_order = i; });
-    renderGallery();
-    await persistOrder(reordered);
-  }
-
-  async function reorderShoots(srcId, targetId, currentList) {
-    var srcIdx = currentList.findIndex(function (s) { return s.id === srcId; });
-    var targetIdx = currentList.findIndex(function (s) { return s.id === targetId; });
-    if (srcIdx === -1 || targetIdx === -1) return;
-    var reordered = currentList.slice();
-    var moved = reordered.splice(srcIdx, 1)[0];
-    reordered.splice(targetIdx, 0, moved);
-    reordered.forEach(function (s, i) { s.display_order = i; });
-    renderGallery();
-    await persistOrder(reordered);
-  }
-
-  // ---------- Cover picker ----------
-  function openCoverPicker(shoot) {
-    var grid = el('dbmCoverGrid');
-    grid.innerHTML = '';
-    shoot.photos.forEach(function (photo) {
-      var pick = document.createElement('div');
-      pick.className = 'dbm-cover-pick' + (photo.id === shoot.cover.id ? ' is-current' : '');
-      pick.innerHTML = '<img src="' + photo.url + '" alt="cover option">';
-      pick.addEventListener('click', async function () {
-        shoot.cover = photo;
-        shoot.cover_photo_id = photo.id;
-        el('dbmCoverModalBackdrop').classList.remove('show');
-        renderGallery();
-        await supabase.from('shoots').update({ cover_photo_id: photo.id }).eq('id', shoot.id);
-      });
-      grid.appendChild(pick);
-    });
-    el('dbmCoverModalBackdrop').classList.add('show');
-  }
-  el('dbmCancelCover').addEventListener('click', function () { el('dbmCoverModalBackdrop').classList.remove('show'); });
-  el('dbmCoverModalBackdrop').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
-
-  // ---------- Organize mode + merge ----------
-  el('dbmOrganizeBtn').addEventListener('click', function () {
-    organizeMode = !organizeMode;
-    this.classList.toggle('active', organizeMode);
-    el('dbmOrganizeHint').style.display = organizeMode ? 'block' : 'none';
-    if (!organizeMode) mergeSelection = [];
-    updateMergeButton();
-    renderGallery();
-  });
-
-  function toggleMergeSelection(id, cardEl) {
-    var idx = mergeSelection.indexOf(id);
-    if (idx === -1) { mergeSelection.push(id); cardEl.classList.add('merge-selected'); }
-    else { mergeSelection.splice(idx, 1); cardEl.classList.remove('merge-selected'); }
-    updateMergeButton();
-  }
-
-  function updateMergeButton() {
-    var btn = el('dbmMergeBtn');
-    el('dbmMergeCount').textContent = mergeSelection.length;
-    btn.style.display = (isAdmin && organizeMode) ? 'inline-block' : 'none';
-    btn.disabled = mergeSelection.length < 2;
-  }
-
-  el('dbmMergeBtn').addEventListener('click', async function () {
-    if (mergeSelection.length < 2) return;
-    var targetId = mergeSelection[0];
-    var targetShoot = shoots.find(function (s) { return s.id === targetId; });
-    var othersIds = mergeSelection.slice(1);
-
-    // Move every photo from the other shoots into the target shoot, then delete the now-empty shoots.
-    for (var i = 0; i < othersIds.length; i++) {
-      var otherId = othersIds[i];
-      await supabase.from('photos').update({ shoot_id: targetId }).eq('shoot_id', otherId);
-      await supabase.from('shoots').delete().eq('id', otherId);
-    }
-
-    mergeSelection = [];
-    updateMergeButton();
-    await loadShoots();
-  });
-
-  // ---------- Lightbox ----------
-  var lightboxSet = [];
-  var lightboxIndex = 0;
-
-  function showLightboxImage() {
-    var img = lightboxSet[lightboxIndex];
-    el('dbmLightboxImg').src = img.url;
-    var counter = el('dbmLightboxCounter');
-    var prevBtn = el('dbmLightboxPrev');
-    var nextBtn = el('dbmLightboxNext');
-    if (lightboxSet.length > 1) {
-      counter.textContent = (lightboxIndex + 1) + ' / ' + lightboxSet.length;
-      counter.style.display = 'block';
-      prevBtn.style.display = 'flex';
-      nextBtn.style.display = 'flex';
-    } else {
-      counter.style.display = 'none';
-      prevBtn.style.display = 'none';
-      nextBtn.style.display = 'none';
-    }
-  }
-  function openLightbox(shoot, photo) {
-    lightboxSet = shoot.photos;
-    lightboxIndex = lightboxSet.findIndex(function (p) { return p.id === photo.id; });
-    if (lightboxIndex < 0) lightboxIndex = 0;
-    showLightboxImage();
-    el('dbmLightbox').classList.add('show');
-  }
-  function closeLightbox() {
-    el('dbmLightbox').classList.remove('show');
-    el('dbmLightboxImg').src = '';
-    lightboxSet = [];
-    lightboxIndex = 0;
-  }
-  function lightboxPrev() { if (!lightboxSet.length) return; lightboxIndex = (lightboxIndex - 1 + lightboxSet.length) % lightboxSet.length; showLightboxImage(); }
-  function lightboxNext() { if (!lightboxSet.length) return; lightboxIndex = (lightboxIndex + 1) % lightboxSet.length; showLightboxImage(); }
-
-  el('dbmLightboxClose').addEventListener('click', closeLightbox);
-  el('dbmLightboxPrev').addEventListener('click', function (e) { e.stopPropagation(); lightboxPrev(); });
-  el('dbmLightboxNext').addEventListener('click', function (e) { e.stopPropagation(); lightboxNext(); });
-  el('dbmLightbox').addEventListener('click', function (e) { if (e.target === this) closeLightbox(); });
-  document.addEventListener('keydown', function (e) {
-    if (!el('dbmLightbox').classList.contains('show')) return;
-    if (e.key === 'Escape') closeLightbox();
-    if (e.key === 'ArrowLeft') lightboxPrev();
-    if (e.key === 'ArrowRight') lightboxNext();
-  });
-
-  // ---------- Filters ----------
-  document.querySelectorAll('.dbm-filter').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      document.querySelectorAll('.dbm-filter').forEach(function (b) { b.classList.remove('active'); });
-      btn.classList.add('active');
-      currentFilter = btn.getAttribute('data-filter');
-      renderGallery();
-    });
-  });
-
-  // ---------- Sections (Work / FAQ / Contact) ----------
+  // ---------- Sections (Work / Videos / FAQ / Contact) ----------
   function dbmShowSection(name) {
     el('dbmWorkSection').style.display = name === 'work' ? 'block' : 'none';
+    el('dbmVideosSection').style.display = name === 'videos' ? 'block' : 'none';
     el('dbmFaqSection').style.display = name === 'faq' ? 'block' : 'none';
     el('dbmContactSection').style.display = name === 'contact' ? 'block' : 'none';
     document.querySelector('.dbm-hero').style.display = name === 'work' ? 'block' : 'none';
@@ -491,17 +650,12 @@
     btn.addEventListener('click', function () { dbmShowSection(btn.getAttribute('data-section')); });
   });
   el('dbmBurger').addEventListener('click', function () {
-    var nav = document.querySelector('.dbm-nav');
-    var open = nav.style.display === 'flex';
-    nav.style.display = open ? 'none' : 'flex';
-    nav.style.flexDirection = 'column';
-    nav.style.position = 'absolute';
-    nav.style.top = '60px';
-    nav.style.right = '16px';
-    nav.style.background = '#f5f5f0';
-    nav.style.border = '2px solid #0a0a0a';
-    nav.style.padding = '12px 20px';
-    nav.style.gap = '12px';
+    document.querySelector('.dbm-nav').classList.toggle('mobile-open');
+  });
+  document.querySelectorAll('.dbm-nav button').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelector('.dbm-nav').classList.remove('mobile-open');
+    });
   });
 
   var faqList = el('dbmFaqList');
@@ -513,98 +667,12 @@
     faqList.appendChild(div);
   });
 
-  // ---------- Upload modal ----------
-  var modalBackdrop = el('dbmModalBackdrop');
-  el('dbmUploadBtn').addEventListener('click', function () {
-    el('dbmUploadStatus').textContent = '';
-    populateShootSelect();
-    modalBackdrop.classList.add('show');
-  });
-  el('dbmCancelUpload').addEventListener('click', function () {
-    modalBackdrop.classList.remove('show');
-    el('dbmFileInput').value = '';
-  });
-  modalBackdrop.addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
-
-  function populateShootSelect() {
-    var select = el('dbmShootSelect');
-    var currentVal = select.value;
-    select.innerHTML = '<option value="__new__">+ Create new shoot</option>';
-    shoots.forEach(function (s) {
-      var opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = s.category + ' — ' + s.photos.length + ' photo(s)';
-      select.appendChild(opt);
-    });
-    if (currentVal) select.value = currentVal;
-  }
-
-  function fileExt(filename) {
-    var m = /\.([a-zA-Z0-9]+)$/.exec(filename);
-    return m ? m[1].toLowerCase() : 'jpg';
-  }
-
-  el('dbmSaveUpload').addEventListener('click', async function () {
-    var fileInput = el('dbmFileInput');
-    var category = el('dbmCatSelect').value;
-    var shootChoice = el('dbmShootSelect').value;
-    var status = el('dbmUploadStatus');
-
-    if (!fileInput.files || !fileInput.files.length) {
-      status.textContent = 'Choose at least one image.';
-      return;
-    }
-    status.textContent = 'Uploading…';
-
-    try {
-      var shootId = shootChoice;
-      if (shootChoice === '__new__') {
-        var maxOrder = shoots.reduce(function (m, s) { return Math.max(m, s.display_order || 0); }, -1);
-        var { data: newShoot, error: shootErr } = await supabase
-          .from('shoots')
-          .insert({ category: category, display_order: maxOrder + 1 })
-          .select()
-          .single();
-        if (shootErr) throw shootErr;
-        shootId = newShoot.id;
-      }
-
-      var files = Array.from(fileInput.files);
-      for (var i = 0; i < files.length; i++) {
-        var file = files[i];
-        var path = shootId + '/' + Date.now() + '-' + i + '.' + fileExt(file.name);
-        var { error: uploadErr } = await supabase.storage.from(STORAGE_BUCKET).upload(path, file);
-        if (uploadErr) throw uploadErr;
-
-        var { data: photoRow, error: photoErr } = await supabase
-          .from('photos')
-          .insert({ shoot_id: shootId, storage_path: path, display_order: i })
-          .select()
-          .single();
-        if (photoErr) throw photoErr;
-
-        if (shootChoice === '__new__' && i === 0) {
-          await supabase.from('shoots').update({ cover_photo_id: photoRow.id }).eq('id', shootId);
-        }
-      }
-
-      status.textContent = 'Added.';
-      await loadShoots();
-      setTimeout(function () {
-        modalBackdrop.classList.remove('show');
-        fileInput.value = '';
-        status.textContent = '';
-      }, 700);
-    } catch (err) {
-      console.error(err);
-      status.textContent = 'Upload failed: ' + (err.message || 'try a smaller file.');
-    }
-  });
-
   // ---------- Boot ----------
   (async function init() {
     await checkSession();
     await loadSiteSettings();
-    await loadShoots();
+    await loadTestimonials();
+    await photoGallery.loadShoots();
+    await videoGallery.loadShoots();
   })();
 })();
