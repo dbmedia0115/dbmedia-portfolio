@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dream Big Media — Portfolio</title>
+<title>Dream Big Media — Photographer &amp; Videographer in Nottingham, UK</title>
+<meta name="description" content="Dream Big Media: event, portrait, and fashion photography &amp; videography based in Nottingham, UK. Book Samuel for your next shoot — weddings, birthdays, brand content, and more.">
+<meta name="keywords" content="photographer Nottingham, videographer Nottingham, event photography, portrait photography, fashion photography, Dream Big Media">
+<meta property="og:title" content="Dream Big Media — Photographer &amp; Videographer in Nottingham, UK">
+<meta property="og:description" content="Event, portrait, and fashion photography &amp; videography based in Nottingham, UK.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
 <style>
 
   @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap');
@@ -83,6 +89,20 @@
   }
 
   .dbm-burger { display: none; background: none; border: none; cursor: pointer; }
+
+  .dbm-nav.mobile-open {
+    display: flex !important;
+    flex-direction: column;
+    position: fixed;
+    top: 64px;
+    right: 16px;
+    left: 16px;
+    background: var(--paper);
+    border: 2px solid var(--ink);
+    padding: 16px 20px;
+    gap: 16px;
+    z-index: 90;
+  }
 
   .dbm-hero {
     padding: 64px 24px 48px;
@@ -179,11 +199,11 @@
     background: #1a1a1a;
     aspect-ratio: 4/5;
   }
-  .dbm-card img {
+  .dbm-card img, .dbm-card video {
     width: 100%; height: 100%; object-fit: cover;
     transition: transform 0.4s ease;
   }
-  .dbm-card:hover img { transform: scale(1.04); }
+  .dbm-card:hover img, .dbm-card:hover video { transform: scale(1.04); }
   .dbm-card-tag {
     position: absolute;
     bottom: 10px;
@@ -318,9 +338,24 @@
     overflow: hidden;
     border-radius: 4px;
     border: 2px solid transparent;
+    position: relative;
   }
   .dbm-cover-pick.is-current { border-color: var(--accent); }
-  .dbm-cover-pick img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .dbm-cover-pick img, .dbm-cover-pick video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .dbm-cover-delete {
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: rgba(140,29,24,0.9);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dbm-cover-delete:hover { background: #6e1611; }
 
   .dbm-empty {
     padding: 60px 24px;
@@ -336,6 +371,30 @@
   .dbm-section-title {
     font-size: clamp(28px, 4vw, 44px);
     margin-bottom: 36px;
+  }
+
+  .dbm-testimonials { margin: 0 auto; }
+  .dbm-testimonials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 24px;
+  }
+  .dbm-testimonial-card {
+    border: 1.5px solid var(--ink);
+    padding: 24px;
+    background: #fff;
+  }
+  .dbm-testimonial-quote {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .dbm-testimonial-name {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--accent);
   }
 
   .dbm-faq-item {
@@ -552,11 +611,50 @@
     .dbm-nav { display: none; }
     .dbm-burger { display: block; }
     .dbm-hero { padding: 44px 20px 32px; }
-    .dbm-filterbar { padding: 0 20px 24px; }
-    .dbm-gallery { padding: 0 20px 48px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-    .dbm-section { padding: 48px 20px; }
-    .dbm-upload-btn { margin-left: 0; width: 100%; justify-content: center; }
-    .dbm-organize-btn, .dbm-merge-btn { width: 100%; }
+    .dbm-filterbar { padding: 0 20px 24px; flex-wrap: wrap; gap: 8px 10px; }
+    .dbm-gallery { padding: 0 20px 48px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+    .dbm-section { padding: 40px 20px; }
+    .dbm-upload-btn { margin-left: 0; width: 100%; justify-content: center; order: 99; }
+    .dbm-organize-btn, .dbm-merge-btn { width: 100%; order: 99; }
+    .dbm-organize-hint { padding: 0 20px 16px; font-size: 12px; }
+
+    .dbm-admin-bar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 16px;
+    }
+    .dbm-admin-bar > div { width: 100%; display: flex; gap: 8px; }
+    .dbm-admin-bar button { flex: 1; }
+
+    .dbm-card-move button, .dbm-card-cover-btn { width: 30px; height: 30px; }
+
+    .dbm-contact { padding: 44px 20px; }
+    .dbm-contact p { max-width: 100%; }
+    .dbm-contact-form { max-width: 100%; }
+    .dbm-contact-form button { width: 100%; }
+
+    .dbm-testimonials-grid { grid-template-columns: 1fr; }
+
+    .dbm-footer { padding: 28px 20px; }
+
+    .dbm-modal { padding: 22px; max-height: 85vh; overflow-y: auto; }
+    .dbm-settings-modal { max-width: 100%; }
+    .dbm-cover-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+
+    .dbm-lightbox-counter { font-size: 12px; bottom: 12px; }
+    .dbm-lightbox-close { top: 12px; right: 12px; }
+
+    .dbm-login-trigger { bottom: 12px; right: 12px; width: 34px; height: 34px; }
+  }
+
+  @media (max-width: 420px) {
+    .dbm-hero h1 { font-size: clamp(28px, 9vw, 38px); }
+    .dbm-hero-actions { flex-direction: column; align-items: stretch; }
+    .dbm-hero-actions button { width: 100%; }
+    .dbm-gallery { grid-template-columns: repeat(2, 1fr); }
+    .dbm-logo-text { font-size: 12px; }
+    .dbm-logo-text b { font-size: 14px; }
   }
 
   /* --- New: login screen --- */
@@ -607,6 +705,15 @@
   .dbm-spinner-wrap { padding: 80px 24px; text-align: center; color: var(--muted); font-size: 14px; }
 
 </style>
+
+<!-- Google Analytics — replace G-XXXXXXXXXX with your real Measurement ID -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
+</script>
 </head>
 <body>
 
@@ -625,6 +732,7 @@
     </div>
     <nav class="dbm-nav">
       <button data-section="work" class="active">Work</button>
+      <button data-section="videos">Videos</button>
       <button data-section="faq">FAQ</button>
       <button data-section="contact">Contact</button>
     </nav>
@@ -667,9 +775,34 @@
     <div class="dbm-empty" id="dbmEmpty" style="display:none;">No images in this category yet.</div>
   </div>
 
+  <div id="dbmVideosSection" style="display:none;">
+    <div class="dbm-filterbar">
+      <button class="dbm-filter active" data-vfilter="all">All <span class="dbm-filter-count" id="vcnt-all"></span></button>
+      <button class="dbm-filter" data-vfilter="events">Events <span class="dbm-filter-count" id="vcnt-events"></span></button>
+      <button class="dbm-filter" data-vfilter="portraits">Portraits <span class="dbm-filter-count" id="vcnt-portraits"></span></button>
+      <button class="dbm-filter" data-vfilter="fashion">Fashion <span class="dbm-filter-count" id="vcnt-fashion"></span></button>
+      <button class="dbm-upload-btn" id="dbmUploadVideoBtn" style="display:none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add video
+      </button>
+      <button class="dbm-organize-btn" id="dbmOrganizeVideoBtn" style="display:none;">Organize</button>
+      <button class="dbm-merge-btn" id="dbmMergeVideoBtn" style="display:none;">Merge selected (<span id="dbmMergeVideoCount">0</span>)</button>
+    </div>
+    <div class="dbm-organize-hint" id="dbmOrganizeVideoHint" style="display:none;">Drag tiles to reorder &middot; click the play icon to change a shoot's cover &middot; click tiles to select them for merging</div>
+
+    <div class="dbm-gallery" id="dbmVideoGallery"></div>
+    <div class="dbm-spinner-wrap" id="dbmVideoLoading">Loading videos&hellip;</div>
+    <div class="dbm-empty" id="dbmVideoEmpty" style="display:none;">No videos in this category yet.</div>
+  </div>
+
   <section class="dbm-section" id="dbmFaqSection" style="display:none;">
     <h2 class="dbm-section-title dbm-display">FAQ</h2>
     <div id="dbmFaqList"></div>
+  </section>
+
+  <section class="dbm-section dbm-testimonials">
+    <h2 class="dbm-section-title dbm-display">What clients say</h2>
+    <div id="dbmTestimonialsList" class="dbm-testimonials-grid"></div>
   </section>
 
   <section class="dbm-contact" id="dbmContactSection" style="display:none;">
@@ -680,6 +813,10 @@
         <div class="dbm-contact-card">
           <div class="dbm-contact-card-label">Instagram</div>
           <div class="dbm-contact-card-value"><a href="https://instagram.com/dbmedia.1" target="_blank" id="dbmContactInstagram">@dbmedia.1</a></div>
+        </div>
+        <div class="dbm-contact-card">
+          <div class="dbm-contact-card-label">Follow along</div>
+          <div class="dbm-contact-card-value"><a href="https://instagram.com/dbmedia.1" target="_blank" id="dbmFollowInstagram">Follow on Instagram &rarr;</a></div>
         </div>
         <div class="dbm-contact-card">
           <div class="dbm-contact-card-label">Location</div>
@@ -725,6 +862,7 @@
     <button class="dbm-lightbox-close" id="dbmLightboxClose">&times;</button>
     <button class="dbm-lightbox-nav dbm-lightbox-prev" id="dbmLightboxPrev" aria-label="Previous">&#8249;</button>
     <img id="dbmLightboxImg" src="" alt="">
+    <video id="dbmLightboxVideo" controls style="display:none; max-width:90vw; max-height:85vh;"></video>
     <button class="dbm-lightbox-nav dbm-lightbox-next" id="dbmLightboxNext" aria-label="Next">&#8250;</button>
     <div class="dbm-lightbox-counter" id="dbmLightboxCounter"></div>
   </div>
@@ -752,9 +890,45 @@
     </div>
   </div>
 
+  <div class="dbm-modal-backdrop" id="dbmVideoModalBackdrop">
+    <div class="dbm-modal">
+      <h3>Add a video</h3>
+      <label for="dbmVideoFileInput">Choose video file</label>
+      <input type="file" id="dbmVideoFileInput" accept="video/*" multiple>
+      <p style="font-size:12px; color:var(--muted); margin-top:6px;">Large files may take a while to upload depending on your connection.</p>
+      <label for="dbmVideoCatSelect">Category</label>
+      <select id="dbmVideoCatSelect">
+        <option value="events">Events</option>
+        <option value="portraits">Portraits</option>
+        <option value="fashion">Fashion</option>
+      </select>
+      <label for="dbmVideoShootSelect">Shoot <span style="opacity:0.6; font-weight:400;">(add to an existing shoot, or create new)</span></label>
+      <select id="dbmVideoShootSelect">
+        <option value="__new__">+ Create new shoot</option>
+      </select>
+      <div class="dbm-modal-actions">
+        <button class="dbm-btn" id="dbmSaveVideoUpload" style="flex:1;">Save</button>
+        <button class="dbm-btn outline" id="dbmCancelVideoUpload" style="flex:1;">Cancel</button>
+      </div>
+      <div class="dbm-modal-status" id="dbmVideoUploadStatus"></div>
+    </div>
+  </div>
+
+  <div class="dbm-modal-backdrop" id="dbmVideoCoverModalBackdrop">
+    <div class="dbm-modal dbm-cover-modal">
+      <h3>Manage this shoot's videos</h3>
+      <p style="font-size:13px; color:var(--muted); margin-top:-10px; margin-bottom:14px;">Click a video to make it the cover, or click the &times; to delete it.</p>
+      <div class="dbm-cover-grid" id="dbmVideoCoverGrid"></div>
+      <div class="dbm-modal-actions">
+        <button class="dbm-btn outline" id="dbmCancelVideoCover" style="flex:1;">Close</button>
+      </div>
+    </div>
+  </div>
+
   <div class="dbm-modal-backdrop" id="dbmCoverModalBackdrop">
     <div class="dbm-modal dbm-cover-modal">
-      <h3>Choose cover photo</h3>
+      <h3>Manage this shoot's photos</h3>
+      <p style="font-size:13px; color:var(--muted); margin-top:-10px; margin-bottom:14px;">Click a photo to make it the cover, or click the &times; to delete it.</p>
       <div class="dbm-cover-grid" id="dbmCoverGrid"></div>
       <div class="dbm-modal-actions">
         <button class="dbm-btn outline" id="dbmCancelCover" style="flex:1;">Close</button>
