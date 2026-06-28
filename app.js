@@ -130,7 +130,124 @@
     populateShootSelect();
   }
 
-  // ---------- Rendering ----------
+  // ---------- Site settings (editable text + colors) ----------
+  var siteSettings = {};
+
+  async function loadSiteSettings() {
+    var { data, error } = await supabase.from('site_settings').select('*');
+    if (error) { console.error('Could not load site settings', error); return; }
+    siteSettings = {};
+    (data || []).forEach(function (row) { siteSettings[row.key] = row.value; });
+    applySiteSettings();
+  }
+
+  function applySiteSettings() {
+    if (siteSettings.hero_eyebrow) el('dbmHeroEyebrow').textContent = siteSettings.hero_eyebrow;
+    if (siteSettings.hero_heading) {
+      var parts = siteSettings.hero_heading.split('|');
+      el('dbmHeroHeading').innerHTML = parts.map(function (p) { return p.trim(); }).join('<br>');
+    }
+    if (siteSettings.hero_body) el('dbmHeroBody').textContent = siteSettings.hero_body;
+    if (siteSettings.contact_heading) el('dbmContactHeading').textContent = siteSettings.contact_heading;
+    if (siteSettings.contact_body) el('dbmContactBody').textContent = siteSettings.contact_body;
+
+    if (siteSettings.color_paper) document.body.style.setProperty('--paper', siteSettings.color_paper);
+    if (siteSettings.color_ink) document.body.style.setProperty('--ink', siteSettings.color_ink);
+    if (siteSettings.color_accent) document.body.style.setProperty('--accent', siteSettings.color_accent);
+
+    if (siteSettings.social_instagram) {
+      el('dbmContactInstagram').href = siteSettings.social_instagram;
+      el('dbmSocialInstagram').href = siteSettings.social_instagram;
+    }
+    if (siteSettings.social_tiktok) el('dbmSocialTiktok').href = siteSettings.social_tiktok;
+    if (siteSettings.social_facebook) el('dbmSocialFacebook').href = siteSettings.social_facebook;
+  }
+
+  function openSettingsModal() {
+    el('dbmSetHeroEyebrow').value = siteSettings.hero_eyebrow || '';
+    el('dbmSetHeroHeading').value = siteSettings.hero_heading || '';
+    el('dbmSetHeroBody').value = siteSettings.hero_body || '';
+    el('dbmSetContactHeading').value = siteSettings.contact_heading || '';
+    el('dbmSetContactBody').value = siteSettings.contact_body || '';
+    el('dbmSetColorPaper').value = siteSettings.color_paper || '#f5f5f0';
+    el('dbmSetColorInk').value = siteSettings.color_ink || '#0a0a0a';
+    el('dbmSetColorAccent').value = siteSettings.color_accent || '#8c1d18';
+    el('dbmSetSocialInstagram').value = siteSettings.social_instagram || '';
+    el('dbmSetSocialTiktok').value = siteSettings.social_tiktok || '';
+    el('dbmSetSocialFacebook').value = siteSettings.social_facebook || '';
+    el('dbmSettingsStatus').textContent = '';
+    el('dbmSettingsModalBackdrop').classList.add('show');
+  }
+
+  el('dbmSiteSettingsBtn').addEventListener('click', openSettingsModal);
+  el('dbmCancelSettings').addEventListener('click', function () { el('dbmSettingsModalBackdrop').classList.remove('show'); });
+  el('dbmSettingsModalBackdrop').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
+
+  el('dbmSaveSettings').addEventListener('click', async function () {
+    var status = el('dbmSettingsStatus');
+    status.textContent = 'Saving…';
+
+    var updates = {
+      hero_eyebrow: el('dbmSetHeroEyebrow').value,
+      hero_heading: el('dbmSetHeroHeading').value,
+      hero_body: el('dbmSetHeroBody').value,
+      contact_heading: el('dbmSetContactHeading').value,
+      contact_body: el('dbmSetContactBody').value,
+      color_paper: el('dbmSetColorPaper').value,
+      color_ink: el('dbmSetColorInk').value,
+      color_accent: el('dbmSetColorAccent').value,
+      social_instagram: el('dbmSetSocialInstagram').value,
+      social_tiktok: el('dbmSetSocialTiktok').value,
+      social_facebook: el('dbmSetSocialFacebook').value
+    };
+
+    try {
+      var rows = Object.keys(updates).map(function (key) { return { key: key, value: updates[key] }; });
+      var { error } = await supabase.from('site_settings').upsert(rows);
+      if (error) throw error;
+      siteSettings = Object.assign({}, siteSettings, updates);
+      applySiteSettings();
+      status.textContent = 'Saved.';
+      setTimeout(function () { el('dbmSettingsModalBackdrop').classList.remove('show'); status.textContent = ''; }, 700);
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'Could not save: ' + (err.message || 'unknown error');
+    }
+  });
+
+  // ---------- Contact form ----------
+  el('dbmContactForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var status = el('dbmContactFormStatus');
+    var submitBtn = el('dbmContactSubmit');
+    var name = el('dbmContactName').value.trim();
+    var email = el('dbmContactEmail').value.trim();
+    var message = el('dbmContactMessage').value.trim();
+
+    if (!name || !email || !message) {
+      status.textContent = 'Please fill in every field.';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    status.textContent = 'Sending…';
+
+    try {
+      var { data, error } = await supabase.functions.invoke('send-contact-email', {
+        body: { name: name, email: email, message: message }
+      });
+      if (error) throw error;
+      status.textContent = "Thanks — I'll get back to you soon.";
+      el('dbmContactForm').reset();
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'Something went wrong sending that. Please try emailing directly instead.';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+
+  
   function renderCounts() {
     var counts = { all: shoots.length, events: 0, portraits: 0, fashion: 0 };
     shoots.forEach(function (s) { if (counts[s.category] !== undefined) counts[s.category]++; });
@@ -487,6 +604,7 @@
   // ---------- Boot ----------
   (async function init() {
     await checkSession();
+    await loadSiteSettings();
     await loadShoots();
   })();
 })();
