@@ -409,7 +409,63 @@
     font-size: 12px;
     color: var(--muted);
     background: var(--paper);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
   }
+  .dbm-footer-social { display: flex; gap: 16px; }
+  .dbm-footer-social a {
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px;
+    border: 1.5px solid var(--ink);
+    border-radius: 50%;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .dbm-footer-social a:hover { background: var(--ink); color: var(--paper); }
+
+  .dbm-contact-form {
+    margin-top: 40px;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .dbm-contact-form-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--paper);
+    margin-bottom: 10px;
+  }
+  .dbm-contact-form label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #c9c8c2;
+    margin: 10px 0 4px;
+  }
+  .dbm-contact-form input, .dbm-contact-form textarea {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 10px 12px;
+    border: 1.5px solid #3a3a38;
+    background: rgba(255,255,255,0.05);
+    color: var(--paper);
+    resize: vertical;
+  }
+  .dbm-contact-form input::placeholder, .dbm-contact-form textarea::placeholder { color: #6b6a64; }
+  .dbm-contact-form button {
+    margin-top: 16px;
+    align-self: flex-start;
+  }
+  .dbm-contact-form-status { font-size: 13px; margin-top: 10px; min-height: 18px; color: #e8a39e; }
+
+  .dbm-settings-modal { max-width: 460px; max-height: 80vh; overflow-y: auto; }
+  .dbm-settings-group { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 16px; }
+  .dbm-settings-group:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+  .dbm-settings-group h4 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .dbm-settings-group input[type="color"] { width: 100%; height: 38px; padding: 4px; border: 1.5px solid var(--ink); cursor: pointer; }
 
   .dbm-lightbox {
     position: fixed; inset: 0;
@@ -479,13 +535,14 @@
     margin-bottom: 6px;
     margin-top: 16px;
   }
-  .dbm-modal select, .dbm-modal input[type="file"], .dbm-modal input[type="text"] {
+  .dbm-modal select, .dbm-modal input[type="file"], .dbm-modal input[type="text"], .dbm-modal input[type="email"], .dbm-modal textarea {
     width: 100%;
     padding: 10px;
     border: 1.5px solid var(--ink);
     background: #fff;
     font-family: 'Inter', sans-serif;
     font-size: 14px;
+    resize: vertical;
   }
   .dbm-modal label span { text-transform: none; letter-spacing: normal; font-weight: 400; }
   .dbm-modal-actions { display: flex; gap: 10px; margin-top: 22px; }
@@ -555,7 +612,10 @@
 
   <div class="dbm-admin-bar" id="dbmAdminBar">
     <span>Logged in as admin &mdash; Organize mode available</span>
-    <button id="dbmLogoutBtn">Log out</button>
+    <div style="display:flex; gap:8px;">
+      <button id="dbmSiteSettingsBtn">Edit site text &amp; colors</button>
+      <button id="dbmLogoutBtn">Log out</button>
+    </div>
   </div>
 
   <header class="dbm-header">
@@ -576,9 +636,9 @@
   <div class="dbm-sprocket"></div>
 
   <section class="dbm-hero">
-    <div class="dbm-hero-eyebrow">Photography &amp; videography — Nottingham, UK</div>
-    <h1>Moments,<br>shot with intent.</h1>
-    <p>Event coverage, portraits, and fashion work. I shoot what's real and edit it to feel cinematic — every frame built to be looked at twice.</p>
+    <div class="dbm-hero-eyebrow" id="dbmHeroEyebrow">Photography &amp; videography — Nottingham, UK</div>
+    <h1 id="dbmHeroHeading">Moments,<br>shot with intent.</h1>
+    <p id="dbmHeroBody">Event coverage, portraits, and fashion work. I shoot what's real and edit it to feel cinematic — every frame built to be looked at twice.</p>
     <div class="dbm-hero-actions">
       <button class="dbm-btn" onclick="document.getElementById('dbmGallery').scrollIntoView({behavior:'smooth'})">View the work</button>
       <button class="dbm-btn outline" onclick="dbmShowSection('contact')">Get in touch</button>
@@ -614,12 +674,12 @@
 
   <section class="dbm-contact" id="dbmContactSection" style="display:none;">
     <div class="dbm-contact-inner">
-      <h2 class="dbm-display">Let's work together</h2>
-      <p>DM, email, or send a message — whichever's easiest. Tell me what you're shooting and when, and I'll get back to you with availability.</p>
+      <h2 class="dbm-display" id="dbmContactHeading">Let's work together</h2>
+      <p id="dbmContactBody">DM, email, or send a message — whichever's easiest. Tell me what you're shooting and when, and I'll get back to you with availability.</p>
       <div class="dbm-contact-grid">
         <div class="dbm-contact-card">
           <div class="dbm-contact-card-label">Instagram</div>
-          <div class="dbm-contact-card-value"><a href="https://instagram.com/dbmedia.1" target="_blank">@dbmedia.1</a></div>
+          <div class="dbm-contact-card-value"><a href="https://instagram.com/dbmedia.1" target="_blank" id="dbmContactInstagram">@dbmedia.1</a></div>
         </div>
         <div class="dbm-contact-card">
           <div class="dbm-contact-card-label">Location</div>
@@ -630,11 +690,36 @@
           <div class="dbm-contact-card-value"><a href="mailto:db.media0115@gmail.com">db.media0115@gmail.com</a></div>
         </div>
       </div>
+
+      <form class="dbm-contact-form" id="dbmContactForm">
+        <h3 class="dbm-contact-form-title">Or send a booking enquiry directly</h3>
+        <label for="dbmContactName">Name</label>
+        <input type="text" id="dbmContactName" required>
+        <label for="dbmContactEmail">Email</label>
+        <input type="email" id="dbmContactEmail" required>
+        <label for="dbmContactMessage">What are you booking, and when?</label>
+        <textarea id="dbmContactMessage" rows="5" required placeholder="e.g. 21st birthday shoot, mid-August, Nottingham city centre"></textarea>
+        <button type="submit" class="dbm-btn" id="dbmContactSubmit">Send enquiry</button>
+        <div class="dbm-contact-form-status" id="dbmContactFormStatus"></div>
+      </form>
     </div>
   </section>
 
   <div class="dbm-sprocket"></div>
-  <footer class="dbm-footer">DREAM BIG MEDIA &mdash; Nottingham, UK</footer>
+  <footer class="dbm-footer">
+    <span>DREAM BIG MEDIA &mdash; Nottingham, UK</span>
+    <div class="dbm-footer-social">
+      <a href="https://instagram.com/dbmedia.1" target="_blank" rel="noopener" id="dbmSocialInstagram" aria-label="Instagram">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+      </a>
+      <a href="https://tiktok.com/@samuel2junior" target="_blank" rel="noopener" id="dbmSocialTiktok" aria-label="TikTok">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.6 5.82s.51.5 0 0A4.278 4.278 0 0 1 15.54 3h-3.09v12.4a2.592 2.592 0 0 1-2.59 2.5c-1.42 0-2.6-1.16-2.6-2.6 0-1.72 1.66-3.01 3.37-2.48V9.66c-3.45-.46-6.47 2.22-6.47 5.64 0 3.33 2.76 5.7 5.69 5.7 3.14 0 5.69-2.55 5.69-5.7V9.01a7.35 7.35 0 0 0 4.49 1.5V7.46s-2.07.1-3.43-1.64z"/></svg>
+      </a>
+      <a href="https://facebook.com/dbmedia.1" target="_blank" rel="noopener" id="dbmSocialFacebook" aria-label="Facebook">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+      </a>
+    </div>
+  </footer>
 
   <div class="dbm-lightbox" id="dbmLightbox">
     <button class="dbm-lightbox-close" id="dbmLightboxClose">&times;</button>
@@ -674,6 +759,56 @@
       <div class="dbm-modal-actions">
         <button class="dbm-btn outline" id="dbmCancelCover" style="flex:1;">Close</button>
       </div>
+    </div>
+  </div>
+
+  <div class="dbm-modal-backdrop" id="dbmSettingsModalBackdrop">
+    <div class="dbm-modal dbm-settings-modal">
+      <h3>Edit site text &amp; colors</h3>
+
+      <div class="dbm-settings-group">
+        <h4>Hero section</h4>
+        <label for="dbmSetHeroEyebrow">Small label above heading</label>
+        <input type="text" id="dbmSetHeroEyebrow">
+        <label for="dbmSetHeroHeading">Heading <span style="opacity:0.6; font-weight:400;">(use a | to break the line, like the original "Moments, | shot with intent.")</span></label>
+        <input type="text" id="dbmSetHeroHeading">
+        <label for="dbmSetHeroBody">Paragraph</label>
+        <textarea id="dbmSetHeroBody" rows="3"></textarea>
+      </div>
+
+      <div class="dbm-settings-group">
+        <h4>Contact section</h4>
+        <label for="dbmSetContactHeading">Heading</label>
+        <input type="text" id="dbmSetContactHeading">
+        <label for="dbmSetContactBody">Paragraph</label>
+        <textarea id="dbmSetContactBody" rows="3"></textarea>
+      </div>
+
+      <div class="dbm-settings-group">
+        <h4>Colors</h4>
+        <label for="dbmSetColorPaper">Background</label>
+        <input type="color" id="dbmSetColorPaper">
+        <label for="dbmSetColorInk">Text / ink</label>
+        <input type="color" id="dbmSetColorInk">
+        <label for="dbmSetColorAccent">Accent (buttons, highlights)</label>
+        <input type="color" id="dbmSetColorAccent">
+      </div>
+
+      <div class="dbm-settings-group">
+        <h4>Social links</h4>
+        <label for="dbmSetSocialInstagram">Instagram URL</label>
+        <input type="text" id="dbmSetSocialInstagram">
+        <label for="dbmSetSocialTiktok">TikTok URL</label>
+        <input type="text" id="dbmSetSocialTiktok">
+        <label for="dbmSetSocialFacebook">Facebook URL</label>
+        <input type="text" id="dbmSetSocialFacebook">
+      </div>
+
+      <div class="dbm-modal-actions">
+        <button class="dbm-btn" id="dbmSaveSettings" style="flex:1;">Save changes</button>
+        <button class="dbm-btn outline" id="dbmCancelSettings" style="flex:1;">Cancel</button>
+      </div>
+      <div class="dbm-modal-status" id="dbmSettingsStatus"></div>
     </div>
   </div>
 
