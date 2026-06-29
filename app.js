@@ -434,15 +434,18 @@
     var counter = el('dbmLightboxCounter');
     var prevBtn = el('dbmLightboxPrev');
     var nextBtn = el('dbmLightboxNext');
+    var hint = el('dbmLightboxHint');
     if (lightboxSet.length > 1) {
       counter.textContent = (lightboxIndex + 1) + ' / ' + lightboxSet.length;
       counter.style.display = 'block';
       prevBtn.style.display = 'flex';
       nextBtn.style.display = 'flex';
+      hint.style.display = 'block';
     } else {
       counter.style.display = 'none';
       prevBtn.style.display = 'none';
       nextBtn.style.display = 'none';
+      hint.style.display = 'none';
     }
   }
   function openLightbox(shoot, item, mediaType) {
@@ -527,7 +530,6 @@
 
     if (siteSettings.social_instagram) {
       el('dbmContactInstagram').href = siteSettings.social_instagram;
-      el('dbmFollowInstagram').href = siteSettings.social_instagram;
       el('dbmSocialInstagram').href = siteSettings.social_instagram;
     }
     if (siteSettings.social_tiktok) el('dbmSocialTiktok').href = siteSettings.social_tiktok;
