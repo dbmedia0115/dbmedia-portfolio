@@ -101,7 +101,7 @@
       state.shoots = (shootRows || []).map(function (s) {
         var items = itemsByShoot[s.id] || [];
         var cover = items.find(function (it) { return it.id === s[cfg.coverFk]; }) || items[0];
-        var shoot = { id: s.id, category: s.category, display_order: s.display_order, cover: cover, items: items };
+        var shoot = { id: s.id, category: s.category, name: s.name, display_order: s.display_order, cover: cover, items: items };
         shoot[cfg.coverFk] = s[cfg.coverFk];
         return shoot;
       }).filter(function (s) { return s.items.length > 0; });
@@ -140,9 +140,10 @@
         card.setAttribute('data-shoot-id', shoot.id);
         if (state.mergeSelection.indexOf(shoot.id) !== -1) card.classList.add('merge-selected');
 
+        var tagLabel = (shoot.name && shoot.name.trim()) ? shoot.name : shoot.category;
         card.innerHTML =
           mediaTag(cover) +
-          '<span class="dbm-card-tag">' + shoot.category + '</span>' +
+          '<span class="dbm-card-tag">' + tagLabel + '</span>' +
           (state.organizeMode ? '<button class="dbm-card-cover-btn" aria-label="Manage media"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></button>' : '') +
           (state.organizeMode ? '<div class="dbm-card-move"><button class="dbm-move-left" aria-label="Move earlier" ' + (idx === 0 ? 'disabled' : '') + '>&#8249;</button><button class="dbm-move-right" aria-label="Move later" ' + (idx === filtered.length - 1 ? 'disabled' : '') + '>&#8250;</button></div>' : '');
 
@@ -214,7 +215,21 @@
       await persistOrder(reordered);
     }
 
+    var nameSaveHandler = null;
     function openCoverPicker(shoot) {
+      var nameInput = el(cfg.els.nameInput);
+      var nameSaveBtn = el(cfg.els.saveNameBtn);
+      nameInput.value = shoot.name || '';
+
+      if (nameSaveHandler) nameSaveBtn.removeEventListener('click', nameSaveHandler);
+      nameSaveHandler = async function () {
+        var newName = nameInput.value.trim();
+        await supabase.from(cfg.shootTable).update({ name: newName || null }).eq('id', shoot.id);
+        shoot.name = newName;
+        renderGallery();
+      };
+      nameSaveBtn.addEventListener('click', nameSaveHandler);
+
       var grid = el(cfg.els.coverGrid);
       grid.innerHTML = '';
       shoot.items.forEach(function (item) {
@@ -343,7 +358,8 @@
       state.shoots.forEach(function (s) {
         var opt = document.createElement('option');
         opt.value = s.id;
-        opt.textContent = s.category + ' — ' + s.items.length + ' item(s)';
+        var label = (s.name && s.name.trim()) ? s.name : s.category;
+        opt.textContent = label + ' — ' + s.items.length + ' item(s)';
         select.appendChild(opt);
       });
       if (currentVal) select.value = currentVal;
@@ -487,7 +503,8 @@
       countPrefix: 'cnt-', uploadBtn: 'dbmUploadBtn', organizeBtn: 'dbmOrganizeBtn', organizeHint: 'dbmOrganizeHint',
       mergeBtn: 'dbmMergeBtn', mergeCount: 'dbmMergeCount', uploadModal: 'dbmModalBackdrop', fileInput: 'dbmFileInput',
       catSelect: 'dbmCatSelect', shootSelect: 'dbmShootSelect', saveUpload: 'dbmSaveUpload', cancelUpload: 'dbmCancelUpload',
-      uploadStatus: 'dbmUploadStatus', coverModal: 'dbmCoverModalBackdrop', coverGrid: 'dbmCoverGrid', cancelCover: 'dbmCancelCover'
+      uploadStatus: 'dbmUploadStatus', coverModal: 'dbmCoverModalBackdrop', coverGrid: 'dbmCoverGrid', cancelCover: 'dbmCancelCover',
+      nameInput: 'dbmShootNameInput', saveNameBtn: 'dbmSaveShootName'
     }
   });
 
@@ -499,7 +516,8 @@
       countPrefix: 'vcnt-', uploadBtn: 'dbmUploadVideoBtn', organizeBtn: 'dbmOrganizeVideoBtn', organizeHint: 'dbmOrganizeVideoHint',
       mergeBtn: 'dbmMergeVideoBtn', mergeCount: 'dbmMergeVideoCount', uploadModal: 'dbmVideoModalBackdrop', fileInput: 'dbmVideoFileInput',
       catSelect: 'dbmVideoCatSelect', shootSelect: 'dbmVideoShootSelect', saveUpload: 'dbmSaveVideoUpload', cancelUpload: 'dbmCancelVideoUpload',
-      uploadStatus: 'dbmVideoUploadStatus', coverModal: 'dbmVideoCoverModalBackdrop', coverGrid: 'dbmVideoCoverGrid', cancelCover: 'dbmCancelVideoCover'
+      uploadStatus: 'dbmVideoUploadStatus', coverModal: 'dbmVideoCoverModalBackdrop', coverGrid: 'dbmVideoCoverGrid', cancelCover: 'dbmCancelVideoCover',
+      nameInput: 'dbmVideoShootNameInput', saveNameBtn: 'dbmSaveVideoShootName'
     }
   });
 
@@ -534,7 +552,72 @@
     }
     if (siteSettings.social_tiktok) el('dbmSocialTiktok').href = siteSettings.social_tiktok;
     if (siteSettings.social_facebook) el('dbmSocialFacebook').href = siteSettings.social_facebook;
+
+    document.querySelectorAll('[data-nav-key]').forEach(function (btn) {
+      var key = btn.getAttribute('data-nav-key');
+      if (siteSettings[key]) btn.textContent = siteSettings[key];
+    });
+
+    applyLogoTitleTransform();
   }
+
+  function applyLogoTitleTransform() {
+    var logoScale = parseFloat(siteSettings.logo_size) || 1;
+    var logoX = parseFloat(siteSettings.logo_pos_x) || 0;
+    var logoY = parseFloat(siteSettings.logo_pos_y) || 0;
+    var titleScale = parseFloat(siteSettings.title_size) || 1;
+    var titleX = parseFloat(siteSettings.title_pos_x) || 0;
+    var titleY = parseFloat(siteSettings.title_pos_y) || 0;
+
+    el('dbmLogoMark').style.transform = 'translate(' + logoX + 'px, ' + logoY + 'px) scale(' + logoScale + ')';
+    el('dbmLogoText').style.transform = 'translate(' + titleX + 'px, ' + titleY + 'px) scale(' + titleScale + ')';
+  }
+
+  // ---------- Draggable logo & title (admin only) ----------
+  function makeDraggable(elId, xKey, yKey) {
+    var node = el(elId);
+    var dragging = false;
+    var startX, startY, baseX, baseY;
+
+    node.addEventListener('mousedown', function (e) {
+      if (!node.classList.contains('draggable')) return;
+      dragging = true;
+      node.classList.add('dragging');
+      startX = e.clientX;
+      startY = e.clientY;
+      baseX = parseFloat(siteSettings[xKey]) || 0;
+      baseY = parseFloat(siteSettings[yKey]) || 0;
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', function (e) {
+      if (!dragging) return;
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      siteSettings[xKey] = baseX + dx;
+      siteSettings[yKey] = baseY + dy;
+      applyLogoTitleTransform();
+    });
+
+    document.addEventListener('mouseup', async function () {
+      if (!dragging) return;
+      dragging = false;
+      node.classList.remove('dragging');
+      var patch = {};
+      patch[xKey] = String(siteSettings[xKey]);
+      patch[yKey] = String(siteSettings[yKey]);
+      var rows = Object.keys(patch).map(function (key) { return { key: key, value: patch[key] }; });
+      await supabase.from('site_settings').upsert(rows);
+    });
+  }
+  makeDraggable('dbmLogoMark', 'logo_pos_x', 'logo_pos_y');
+  makeDraggable('dbmLogoText', 'title_pos_x', 'title_pos_y');
+
+  function refreshLogoDraggableState() {
+    el('dbmLogoMark').classList.toggle('draggable', isAdmin);
+    el('dbmLogoText').classList.toggle('draggable', isAdmin);
+  }
+  adminUIRefreshers.push(refreshLogoDraggableState);
 
   function openSettingsModal() {
     el('dbmSetHeroEyebrow').value = siteSettings.hero_eyebrow || '';
@@ -548,6 +631,13 @@
     el('dbmSetSocialInstagram').value = siteSettings.social_instagram || '';
     el('dbmSetSocialTiktok').value = siteSettings.social_tiktok || '';
     el('dbmSetSocialFacebook').value = siteSettings.social_facebook || '';
+    el('dbmSetNavWork').value = siteSettings.nav_label_work || 'Work';
+    el('dbmSetNavVideos').value = siteSettings.nav_label_videos || 'Videos';
+    el('dbmSetNavReviews').value = siteSettings.nav_label_reviews || 'Reviews';
+    el('dbmSetNavFaq').value = siteSettings.nav_label_faq || 'FAQ';
+    el('dbmSetNavContact').value = siteSettings.nav_label_contact || 'Contact';
+    el('dbmSetLogoSize').value = siteSettings.logo_size || '1';
+    el('dbmSetTitleSize').value = siteSettings.title_size || '1';
     el('dbmSettingsStatus').textContent = '';
     el('dbmSettingsModalBackdrop').classList.add('show');
   }
@@ -555,6 +645,26 @@
   el('dbmSiteSettingsBtn').addEventListener('click', openSettingsModal);
   el('dbmCancelSettings').addEventListener('click', function () { el('dbmSettingsModalBackdrop').classList.remove('show'); });
   el('dbmSettingsModalBackdrop').addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
+
+  el('dbmSetLogoSize').addEventListener('input', function () {
+    siteSettings.logo_size = this.value;
+    applyLogoTitleTransform();
+  });
+  el('dbmSetTitleSize').addEventListener('input', function () {
+    siteSettings.title_size = this.value;
+    applyLogoTitleTransform();
+  });
+  el('dbmResetLogoLayout').addEventListener('click', function () {
+    siteSettings.logo_size = '1';
+    siteSettings.logo_pos_x = '0';
+    siteSettings.logo_pos_y = '0';
+    siteSettings.title_size = '1';
+    siteSettings.title_pos_x = '0';
+    siteSettings.title_pos_y = '0';
+    el('dbmSetLogoSize').value = '1';
+    el('dbmSetTitleSize').value = '1';
+    applyLogoTitleTransform();
+  });
 
   el('dbmSaveSettings').addEventListener('click', async function () {
     var status = el('dbmSettingsStatus');
@@ -571,7 +681,18 @@
       color_accent: el('dbmSetColorAccent').value,
       social_instagram: el('dbmSetSocialInstagram').value,
       social_tiktok: el('dbmSetSocialTiktok').value,
-      social_facebook: el('dbmSetSocialFacebook').value
+      social_facebook: el('dbmSetSocialFacebook').value,
+      nav_label_work: el('dbmSetNavWork').value,
+      nav_label_videos: el('dbmSetNavVideos').value,
+      nav_label_reviews: el('dbmSetNavReviews').value,
+      nav_label_faq: el('dbmSetNavFaq').value,
+      nav_label_contact: el('dbmSetNavContact').value,
+      logo_size: el('dbmSetLogoSize').value,
+      title_size: el('dbmSetTitleSize').value,
+      logo_pos_x: String(siteSettings.logo_pos_x || 0),
+      logo_pos_y: String(siteSettings.logo_pos_y || 0),
+      title_pos_x: String(siteSettings.title_pos_x || 0),
+      title_pos_y: String(siteSettings.title_pos_y || 0)
     };
 
     try {
@@ -591,20 +712,28 @@
   // ---------- Testimonials ----------
   var testimonialsCache = [];
 
+  function buildTestimonialCard(t) {
+    var card = document.createElement('div');
+    card.className = 'dbm-testimonial-card';
+    card.innerHTML = '<p class="dbm-testimonial-quote">&ldquo;' + t.quote + '&rdquo;</p><p class="dbm-testimonial-name">' + t.client_name + '</p>';
+    return card;
+  }
+
   async function loadTestimonials() {
     var { data, error } = await supabase.from('testimonials').select('*').order('display_order', { ascending: true });
     if (error) { console.error(error); return; }
     testimonialsCache = data || [];
 
-    var list = el('dbmTestimonialsList');
-    if (list) {
-      list.innerHTML = '';
-      testimonialsCache.forEach(function (t) {
-        var card = document.createElement('div');
-        card.className = 'dbm-testimonial-card';
-        card.innerHTML = '<p class="dbm-testimonial-quote">&ldquo;' + t.quote + '&rdquo;</p><p class="dbm-testimonial-name">' + t.client_name + '</p>';
-        list.appendChild(card);
-      });
+    var teaserList = el('dbmTestimonialsList');
+    if (teaserList) {
+      teaserList.innerHTML = '';
+      testimonialsCache.slice(0, 3).forEach(function (t) { teaserList.appendChild(buildTestimonialCard(t)); });
+    }
+
+    var fullList = el('dbmReviewsList');
+    if (fullList) {
+      fullList.innerHTML = '';
+      testimonialsCache.forEach(function (t) { fullList.appendChild(buildTestimonialCard(t)); });
     }
   }
 
@@ -728,8 +857,10 @@
   function dbmShowSection(name) {
     el('dbmWorkSection').style.display = name === 'work' ? 'block' : 'none';
     el('dbmVideosSection').style.display = name === 'videos' ? 'block' : 'none';
+    el('dbmReviewsSection').style.display = name === 'reviews' ? 'block' : 'none';
     el('dbmFaqSection').style.display = name === 'faq' ? 'block' : 'none';
     el('dbmContactSection').style.display = name === 'contact' ? 'block' : 'none';
+    el('dbmTestimonialsTeaser').style.display = name === 'work' ? 'block' : 'none';
     document.querySelector('.dbm-hero').style.display = name === 'work' ? 'block' : 'none';
     document.querySelectorAll('.dbm-nav button').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-section') === name);
@@ -737,6 +868,8 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
   window.dbmShowSection = dbmShowSection;
+
+  el('dbmSeeAllReviewsBtn').addEventListener('click', function () { dbmShowSection('reviews'); });
 
   el('dbmLogoHome').addEventListener('click', function () { dbmShowSection('work'); });
   el('dbmLogoHome').addEventListener('keydown', function (e) {
