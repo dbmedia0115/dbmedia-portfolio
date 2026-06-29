@@ -585,8 +585,8 @@
   .dbm-lightbox-nav {
     position: absolute; top: 50%; transform: translateY(-50%);
     background: rgba(245,245,240,0.12); border: none; color: #fff;
-    font-size: 30px; line-height: 1; cursor: pointer;
-    width: 48px; height: 48px; border-radius: 50%;
+    font-size: 46px; line-height: 1; cursor: pointer;
+    width: 68px; height: 68px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     transition: background 0.15s ease;
   }
@@ -600,8 +600,18 @@
     text-align: center; color: rgba(245,245,240,0.7);
     font-size: 13px; letter-spacing: 0.04em;
   }
+  .dbm-lightbox-hint {
+    position: absolute; top: 26px; left: 0; right: 0;
+    text-align: center;
+    color: rgba(245,245,240,0.45);
+    font-size: 12.5px;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    text-transform: lowercase;
+    pointer-events: none;
+  }
   @media (max-width: 600px) {
-    .dbm-lightbox-nav { width: 40px; height: 40px; font-size: 24px; }
+    .dbm-lightbox-nav { width: 54px; height: 54px; font-size: 32px; }
     .dbm-lightbox-prev { left: 6px; }
     .dbm-lightbox-next { right: 6px; }
   }
@@ -746,7 +756,7 @@
 
 </style>
 
-<!-- Google Analytics -->
+<!-- Google Analytics — replace G-LH663L66SJ with your real Measurement ID -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-LH663L66SJ"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
@@ -853,11 +863,7 @@
       <div class="dbm-contact-grid">
         <div class="dbm-contact-card">
           <div class="dbm-contact-card-label">Instagram</div>
-          <div class="dbm-contact-card-value"><a href="https://instagram.com/dbmedia.1" target="_blank" id="dbmContactInstagram">@dbmedia.1</a></div>
-        </div>
-        <div class="dbm-contact-card">
-          <div class="dbm-contact-card-label">Follow along</div>
-          <div class="dbm-contact-card-value"><a href="https://instagram.com/dbmedia.1" target="_blank" id="dbmFollowInstagram">Follow on Instagram &rarr;</a></div>
+          <div class="dbm-contact-card-value"><a href="https://instagram.com/dbmedia.1" target="_blank" id="dbmContactInstagram">@dbmedia.1 &rarr;</a></div>
         </div>
         <div class="dbm-contact-card">
           <div class="dbm-contact-card-label">Location</div>
@@ -901,6 +907,7 @@
 
   <div class="dbm-lightbox" id="dbmLightbox">
     <button class="dbm-lightbox-close" id="dbmLightboxClose">&times;</button>
+    <div class="dbm-lightbox-hint" id="dbmLightboxHint">scroll to view more</div>
     <button class="dbm-lightbox-nav dbm-lightbox-prev" id="dbmLightboxPrev" aria-label="Previous">&#8249;</button>
     <img id="dbmLightboxImg" src="" alt="">
     <video id="dbmLightboxVideo" controls style="display:none; max-width:90vw; max-height:85vh;"></video>
