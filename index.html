@@ -328,6 +328,8 @@
     font-size: 12px;
   }
   .dbm-card-move button:disabled { opacity: 0.3; cursor: default; }
+  .dbm-card-move .dbm-delete-shoot { background: rgba(140,29,24,0.85); color: #fff; margin-left: 4px; }
+  .dbm-card-move .dbm-delete-shoot:hover { background: rgba(140,29,24,1); }
 
   .dbm-cover-modal { max-width: 640px; }
   .dbm-cover-grid {
@@ -348,6 +350,20 @@
   }
   .dbm-cover-pick.is-current { border-color: var(--accent); }
   .dbm-cover-pick img, .dbm-cover-pick video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .dbm-pick-actions {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    display: flex; gap: 2px;
+    background: rgba(10,10,10,0.6);
+    padding: 4px;
+  }
+  .dbm-pick-actions button {
+    flex: 1; border: none; background: rgba(255,255,255,0.15);
+    color: #fff; font-size: 12px; cursor: pointer; padding: 4px 2px;
+    border-radius: 2px;
+  }
+  .dbm-pick-actions button:hover { background: rgba(255,255,255,0.3); }
+  .dbm-pick-actions button:disabled { opacity: 0.3; cursor: default; }
+  .dbm-pick-actions .dbm-cover-delete { color: #ff9999; }
   .dbm-cover-delete {
     position: absolute;
     top: 4px; right: 4px;
@@ -952,6 +968,10 @@
       <select id="dbmShootSelect">
         <option value="__new__">+ Create new shoot</option>
       </select>
+      <div id="dbmNewShootNameWrap">
+        <label for="dbmNewShootName">Shoot name <span style="opacity:0.6; font-weight:400;">(optional)</span></label>
+        <input type="text" id="dbmNewShootName" placeholder="e.g. Sarah's 21st Birthday">
+      </div>
       <div class="dbm-modal-actions">
         <button class="dbm-btn" id="dbmSaveUpload" style="flex:1;">Save</button>
         <button class="dbm-btn outline" id="dbmCancelUpload" style="flex:1;">Cancel</button>
@@ -976,6 +996,10 @@
       <select id="dbmVideoShootSelect">
         <option value="__new__">+ Create new shoot</option>
       </select>
+      <div id="dbmNewVideoShootNameWrap">
+        <label for="dbmNewVideoShootName">Shoot name <span style="opacity:0.6; font-weight:400;">(optional)</span></label>
+        <input type="text" id="dbmNewVideoShootName" placeholder="e.g. Summer Event Reel">
+      </div>
       <div class="dbm-modal-actions">
         <button class="dbm-btn" id="dbmSaveVideoUpload" style="flex:1;">Save</button>
         <button class="dbm-btn outline" id="dbmCancelVideoUpload" style="flex:1;">Cancel</button>
@@ -994,9 +1018,12 @@
       </div>
       <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">Click a video to make it the cover, or click the &times; to delete it.</p>
       <div class="dbm-cover-grid" id="dbmVideoCoverGrid"></div>
-      <div class="dbm-modal-actions">
+      <div class="dbm-modal-actions" style="margin-bottom:10px;">
+        <label class="dbm-btn outline" id="dbmAddMoreVideosLabel" style="flex:1; text-align:center; cursor:pointer;">+ Add more videos</label>
+        <input type="file" id="dbmAddMoreVideosInput" accept="video/*" multiple style="display:none;">
         <button class="dbm-btn outline" id="dbmCancelVideoCover" style="flex:1;">Close</button>
       </div>
+      <div class="dbm-modal-status" id="dbmVideoCoverStatus"></div>
     </div>
   </div>
 
@@ -1010,9 +1037,12 @@
       </div>
       <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">Click a photo to make it the cover, or click the &times; to delete it.</p>
       <div class="dbm-cover-grid" id="dbmCoverGrid"></div>
-      <div class="dbm-modal-actions">
+      <div class="dbm-modal-actions" style="margin-bottom:10px;">
+        <label class="dbm-btn outline" id="dbmAddMorePhotosLabel" style="flex:1; text-align:center; cursor:pointer;">+ Add more photos</label>
+        <input type="file" id="dbmAddMorePhotosInput" accept="image/*" multiple style="display:none;">
         <button class="dbm-btn outline" id="dbmCancelCover" style="flex:1;">Close</button>
       </div>
+      <div class="dbm-modal-status" id="dbmCoverStatus"></div>
     </div>
   </div>
 
