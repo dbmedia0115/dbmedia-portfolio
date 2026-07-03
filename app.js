@@ -145,7 +145,7 @@
           mediaTag(cover) +
           '<span class="dbm-card-tag">' + tagLabel + '</span>' +
           (state.organizeMode ? '<button class="dbm-card-cover-btn" aria-label="Manage media"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></button>' : '') +
-          (state.organizeMode ? '<div class="dbm-card-move"><button class="dbm-move-left" aria-label="Move earlier" ' + (idx === 0 ? 'disabled' : '') + '>&#8249;</button><button class="dbm-move-right" aria-label="Move later" ' + (idx === filtered.length - 1 ? 'disabled' : '') + '>&#8250;</button></div>' : '');
+          (state.organizeMode ? '<div class="dbm-card-move"><button class="dbm-move-left" aria-label="Move earlier" ' + (idx === 0 ? 'disabled' : '') + '>&#8249;</button><button class="dbm-move-right" aria-label="Move later" ' + (idx === filtered.length - 1 ? 'disabled' : '') + '>&#8250;</button><button class="dbm-delete-shoot" aria-label="Delete shoot" title="Delete this shoot">&times;</button></div>' : '');
 
         var mediaEl = card.querySelector(cfg.mediaType === 'video' ? 'video' : 'img');
         mediaEl.addEventListener('click', function () {
@@ -161,8 +161,21 @@
 
         var moveLeftBtn = card.querySelector('.dbm-move-left');
         var moveRightBtn = card.querySelector('.dbm-move-right');
+        var deleteShootBtn = card.querySelector('.dbm-delete-shoot');
         if (moveLeftBtn) moveLeftBtn.addEventListener('click', function (e) { e.stopPropagation(); moveShoot(shoot.id, -1, filtered); });
         if (moveRightBtn) moveRightBtn.addEventListener('click', function (e) { e.stopPropagation(); moveShoot(shoot.id, 1, filtered); });
+        if (deleteShootBtn) {
+          deleteShootBtn.addEventListener('click', async function (e) {
+            e.stopPropagation();
+            var shootName = (shoot.name && shoot.name.trim()) ? shoot.name : shoot.category;
+            var confirmed = confirm('Delete the entire "' + shootName + '" shoot and all its photos/videos? This cannot be undone.');
+            if (!confirmed) return;
+            var paths = shoot.items.map(function (it) { return it.storage_path; });
+            if (paths.length) await supabase.storage.from(cfg.bucket).remove(paths);
+            await supabase.from(cfg.shootTable).delete().eq('id', shoot.id);
+            await loadShoots();
+          });
+        }
 
         if (state.organizeMode) {
           card.draggable = true;
@@ -216,28 +229,74 @@
     }
 
     var nameSaveHandler = null;
+    var addMoreHandler = null;
+
     function openCoverPicker(shoot) {
       var nameInput = el(cfg.els.nameInput);
       var nameSaveBtn = el(cfg.els.saveNameBtn);
-      nameInput.value = shoot.name || '';
+      var addMoreInput = el(cfg.els.addMoreInput);
+      var coverStatus = el(cfg.els.coverStatus);
 
+      nameInput.value = shoot.name || '';
+      if (coverStatus) coverStatus.textContent = '';
+
+      // name save handler
       if (nameSaveHandler) nameSaveBtn.removeEventListener('click', nameSaveHandler);
       nameSaveHandler = async function () {
         var newName = nameInput.value.trim();
         await supabase.from(cfg.shootTable).update({ name: newName || null }).eq('id', shoot.id);
         shoot.name = newName;
         renderGallery();
+        if (coverStatus) { coverStatus.textContent = 'Saved.'; setTimeout(function () { coverStatus.textContent = ''; }, 1200); }
       };
       nameSaveBtn.addEventListener('click', nameSaveHandler);
 
+      // add more photos/videos handler
+      if (addMoreInput) {
+        if (addMoreHandler) addMoreInput.removeEventListener('change', addMoreHandler);
+        addMoreHandler = async function () {
+          var files = Array.from(addMoreInput.files);
+          if (!files.length) return;
+          if (coverStatus) coverStatus.textContent = 'Uploading…';
+          try {
+            var baseOrder = shoot.items.reduce(function (m, it) { return Math.max(m, it.display_order || 0); }, -1);
+            for (var i = 0; i < files.length; i++) {
+              var file = files[i];
+              var ext = (/\.([a-zA-Z0-9]+)$/.exec(file.name) || ['', cfg.mediaType === 'video' ? 'mp4' : 'jpg'])[1];
+              var path = shoot.id + '/' + Date.now() + '-' + i + '.' + ext;
+              var { error: uploadErr } = await supabase.storage.from(cfg.bucket).upload(path, file);
+              if (uploadErr) throw uploadErr;
+              var payload = { storage_path: path, display_order: baseOrder + 1 + i };
+              payload[cfg.itemShootFk] = shoot.id;
+              var { data: newItem, error: itemErr } = await supabase.from(cfg.itemTable).insert(payload).select().single();
+              if (itemErr) throw itemErr;
+              newItem.url = supabase.storage.from(cfg.bucket).getPublicUrl(path).data.publicUrl;
+              shoot.items.push(newItem);
+            }
+            if (coverStatus) coverStatus.textContent = 'Added.';
+            addMoreInput.value = '';
+            await loadShoots();
+            openCoverPicker(shoot);
+          } catch (err) {
+            if (coverStatus) coverStatus.textContent = 'Failed: ' + (err.message || 'try again');
+          }
+        };
+        addMoreInput.addEventListener('change', addMoreHandler);
+      }
+
+      // build photo/video grid with reorder + delete
       var grid = el(cfg.els.coverGrid);
       grid.innerHTML = '';
-      shoot.items.forEach(function (item) {
+      shoot.items.forEach(function (item, itemIdx) {
         var pick = document.createElement('div');
-        pick.className = 'dbm-cover-pick' + (item.id === shoot.cover.id ? ' is-current' : '');
+        pick.className = 'dbm-cover-pick' + (item.id === (shoot.cover && shoot.cover.id) ? ' is-current' : '');
         pick.innerHTML =
           mediaTag(item) +
-          '<button class="dbm-cover-delete" aria-label="Delete this item" title="Delete">&times;</button>';
+          '<div class="dbm-pick-actions">' +
+            '<button class="dbm-pick-up" title="Move earlier" ' + (itemIdx === 0 ? 'disabled' : '') + '>&#8593;</button>' +
+            '<button class="dbm-pick-down" title="Move later" ' + (itemIdx === shoot.items.length - 1 ? 'disabled' : '') + '>&#8595;</button>' +
+            '<button class="dbm-cover-delete" title="Delete">&times;</button>' +
+          '</div>';
 
         pick.querySelector(cfg.mediaType === 'video' ? 'video' : 'img').addEventListener('click', async function () {
           shoot.cover = item;
@@ -248,20 +307,39 @@
           await supabase.from(cfg.shootTable).update(patch).eq('id', shoot.id);
         });
 
+        pick.querySelector('.dbm-pick-up').addEventListener('click', async function (e) {
+          e.stopPropagation();
+          if (itemIdx === 0) return;
+          var swapItem = shoot.items[itemIdx - 1];
+          var tmpOrder = item.display_order; item.display_order = swapItem.display_order; swapItem.display_order = tmpOrder;
+          shoot.items.splice(itemIdx, 1); shoot.items.splice(itemIdx - 1, 0, item);
+          await supabase.from(cfg.itemTable).update({ display_order: item.display_order }).eq('id', item.id);
+          await supabase.from(cfg.itemTable).update({ display_order: swapItem.display_order }).eq('id', swapItem.id);
+          openCoverPicker(shoot);
+        });
+
+        pick.querySelector('.dbm-pick-down').addEventListener('click', async function (e) {
+          e.stopPropagation();
+          if (itemIdx === shoot.items.length - 1) return;
+          var swapItem = shoot.items[itemIdx + 1];
+          var tmpOrder = item.display_order; item.display_order = swapItem.display_order; swapItem.display_order = tmpOrder;
+          shoot.items.splice(itemIdx, 1); shoot.items.splice(itemIdx + 1, 0, item);
+          await supabase.from(cfg.itemTable).update({ display_order: item.display_order }).eq('id', item.id);
+          await supabase.from(cfg.itemTable).update({ display_order: swapItem.display_order }).eq('id', swapItem.id);
+          openCoverPicker(shoot);
+        });
+
         pick.querySelector('.dbm-cover-delete').addEventListener('click', async function (e) {
           e.stopPropagation();
           if (shoot.items.length <= 1) {
-            alert('This is the only item in this shoot. Delete the whole shoot from Organize mode instead, or add another item first.');
+            alert('This is the only item in this shoot. Use "Delete shoot" in Organize mode instead.');
             return;
           }
-          var confirmed = confirm('Delete this permanently? This cannot be undone.');
-          if (!confirmed) return;
-
+          if (!confirm('Delete this permanently? This cannot be undone.')) return;
           await supabase.storage.from(cfg.bucket).remove([item.storage_path]);
           await supabase.from(cfg.itemTable).delete().eq('id', item.id);
-
           shoot.items = shoot.items.filter(function (p) { return p.id !== item.id; });
-          if (shoot.cover.id === item.id) {
+          if (!shoot.cover || shoot.cover.id === item.id) {
             shoot.cover = shoot.items[0];
             shoot[cfg.coverFk] = shoot.items[0].id;
             var patch2 = {}; patch2[cfg.coverFk] = shoot.cover.id;
@@ -340,16 +418,25 @@
     });
 
     var uploadModal = el(cfg.els.uploadModal);
+    function updateNewShootNameVisibility() {
+      var wrap = el(cfg.els.newShootNameWrap);
+      if (wrap) wrap.style.display = el(cfg.els.shootSelect).value === '__new__' ? 'block' : 'none';
+    }
+
     el(cfg.els.uploadBtn).addEventListener('click', function () {
       el(cfg.els.uploadStatus).textContent = '';
+      if (el(cfg.els.newShootNameInput)) el(cfg.els.newShootNameInput).value = '';
       populateShootSelect();
+      updateNewShootNameVisibility();
       uploadModal.classList.add('show');
     });
     el(cfg.els.cancelUpload).addEventListener('click', function () {
       uploadModal.classList.remove('show');
       el(cfg.els.fileInput).value = '';
+      if (el(cfg.els.newShootNameInput)) el(cfg.els.newShootNameInput).value = '';
     });
     uploadModal.addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
+    el(cfg.els.shootSelect).addEventListener('change', updateNewShootNameVisibility);
 
     function populateShootSelect() {
       var select = el(cfg.els.shootSelect);
@@ -384,10 +471,13 @@
 
       try {
         var shootId = shootChoice;
+        var newShootName = (el(cfg.els.newShootNameInput) && el(cfg.els.newShootNameInput).value.trim()) || null;
         if (shootChoice === '__new__') {
           var maxOrder = state.shoots.reduce(function (m, s) { return Math.max(m, s.display_order || 0); }, -1);
+          var insertPayload = { category: category, display_order: maxOrder + 1 };
+          if (newShootName) insertPayload.name = newShootName;
           var { data: newShoot, error: shootErr } = await supabase
-            .from(cfg.shootTable).insert({ category: category, display_order: maxOrder + 1 }).select().single();
+            .from(cfg.shootTable).insert(insertPayload).select().single();
           if (shootErr) throw shootErr;
           shootId = newShoot.id;
         }
@@ -504,7 +594,9 @@
       mergeBtn: 'dbmMergeBtn', mergeCount: 'dbmMergeCount', uploadModal: 'dbmModalBackdrop', fileInput: 'dbmFileInput',
       catSelect: 'dbmCatSelect', shootSelect: 'dbmShootSelect', saveUpload: 'dbmSaveUpload', cancelUpload: 'dbmCancelUpload',
       uploadStatus: 'dbmUploadStatus', coverModal: 'dbmCoverModalBackdrop', coverGrid: 'dbmCoverGrid', cancelCover: 'dbmCancelCover',
-      nameInput: 'dbmShootNameInput', saveNameBtn: 'dbmSaveShootName'
+      nameInput: 'dbmShootNameInput', saveNameBtn: 'dbmSaveShootName',
+      newShootNameInput: 'dbmNewShootName', newShootNameWrap: 'dbmNewShootNameWrap',
+      addMoreInput: 'dbmAddMorePhotosInput', coverStatus: 'dbmCoverStatus'
     }
   });
 
@@ -517,7 +609,9 @@
       mergeBtn: 'dbmMergeVideoBtn', mergeCount: 'dbmMergeVideoCount', uploadModal: 'dbmVideoModalBackdrop', fileInput: 'dbmVideoFileInput',
       catSelect: 'dbmVideoCatSelect', shootSelect: 'dbmVideoShootSelect', saveUpload: 'dbmSaveVideoUpload', cancelUpload: 'dbmCancelVideoUpload',
       uploadStatus: 'dbmVideoUploadStatus', coverModal: 'dbmVideoCoverModalBackdrop', coverGrid: 'dbmVideoCoverGrid', cancelCover: 'dbmCancelVideoCover',
-      nameInput: 'dbmVideoShootNameInput', saveNameBtn: 'dbmSaveVideoShootName'
+      nameInput: 'dbmVideoShootNameInput', saveNameBtn: 'dbmSaveVideoShootName',
+      newShootNameInput: 'dbmNewVideoShootName', newShootNameWrap: 'dbmNewVideoShootNameWrap',
+      addMoreInput: 'dbmAddMoreVideosInput', coverStatus: 'dbmVideoCoverStatus'
     }
   });
 
