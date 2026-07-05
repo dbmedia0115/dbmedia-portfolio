@@ -178,23 +178,51 @@
         }
 
         if (state.organizeMode) {
-          card.draggable = true;
-          var mediaInCard = card.querySelector('img, video');
-          if (mediaInCard) mediaInCard.setAttribute('draggable', 'false');
-          card.addEventListener('dragstart', function (e) {
+          // Pointer-event drag: works on desktop (mouse) and mobile (touch)
+          card.style.touchAction = 'none';
+          card.addEventListener('pointerdown', function (e) {
+            // Only drag from the card background, not from buttons
+            if (e.target.closest('button') || e.target.closest('label')) return;
+            e.preventDefault();
+            card.setPointerCapture(e.pointerId);
             state.dragSrcId = shoot.id;
             card.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', shoot.id);
           });
-          card.addEventListener('dragend', function () { card.classList.remove('dragging'); });
-          card.addEventListener('dragover', function (e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; card.classList.add('drag-over'); });
-          card.addEventListener('dragleave', function () { card.classList.remove('drag-over'); });
-          card.addEventListener('drop', function (e) {
-            e.preventDefault();
-            card.classList.remove('drag-over');
-            if (!state.dragSrcId || state.dragSrcId === shoot.id) return;
-            reorderShoots(state.dragSrcId, shoot.id, filtered);
+
+          card.addEventListener('pointermove', function (e) {
+            if (state.dragSrcId !== shoot.id) return;
+            // Find which card we're hovering over
+            var els = document.elementsFromPoint(e.clientX, e.clientY);
+            var overCard = null;
+            for (var i = 0; i < els.length; i++) {
+              var candidate = els[i].closest ? els[i].closest('.dbm-card[data-shoot-id]') : null;
+              if (candidate && candidate !== card) { overCard = candidate; break; }
+            }
+            gallery.querySelectorAll('.dbm-card').forEach(function (c) { c.classList.remove('drag-over'); });
+            if (overCard) overCard.classList.add('drag-over');
+          });
+
+          card.addEventListener('pointerup', function (e) {
+            if (state.dragSrcId !== shoot.id) return;
+            card.classList.remove('dragging');
+            var els = document.elementsFromPoint(e.clientX, e.clientY);
+            var overCard = null;
+            for (var i = 0; i < els.length; i++) {
+              var candidate = els[i].closest ? els[i].closest('.dbm-card[data-shoot-id]') : null;
+              if (candidate && candidate !== card) { overCard = candidate; break; }
+            }
+            gallery.querySelectorAll('.dbm-card').forEach(function (c) { c.classList.remove('drag-over'); });
+            if (overCard) {
+              var targetId = overCard.getAttribute('data-shoot-id');
+              if (targetId && targetId !== shoot.id) reorderShoots(shoot.id, targetId, filtered);
+            }
+            state.dragSrcId = null;
+          });
+
+          card.addEventListener('pointercancel', function () {
+            card.classList.remove('dragging');
+            gallery.querySelectorAll('.dbm-card').forEach(function (c) { c.classList.remove('drag-over'); });
+            state.dragSrcId = null;
           });
         }
 
@@ -362,6 +390,17 @@
     }
     el(cfg.els.cancelCover).addEventListener('click', function () { el(cfg.els.coverModal).classList.remove('show'); });
     el(cfg.els.coverModal).addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
+
+    // Wire the "Add more" button to programmatically trigger the hidden file input
+    // (input is at body level outside the modal for reliable browser file picker behaviour)
+    var addMoreBtn = document.getElementById(cfg.els.addMoreInput.replace('Input', 'Label'));
+    if (addMoreBtn) {
+      addMoreBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var input = el(cfg.els.addMoreInput);
+        if (input) { input.value = ''; input.click(); }
+      });
+    }
 
     el(cfg.els.organizeBtn).addEventListener('click', function () {
       state.organizeMode = !state.organizeMode;
