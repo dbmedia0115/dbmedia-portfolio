@@ -851,7 +851,7 @@
       <button class="dbm-organize-btn" id="dbmOrganizeBtn" style="display:none;">Organize</button>
       <button class="dbm-merge-btn" id="dbmMergeBtn" style="display:none;">Merge selected (<span id="dbmMergeCount">0</span>)</button>
     </div>
-    <div class="dbm-organize-hint" id="dbmOrganizeHint" style="display:none;">Drag tiles to reorder &middot; click the photo icon to change a shoot's cover &middot; click tiles to select them for merging</div>
+    <div class="dbm-organize-hint" id="dbmOrganizeHint" style="display:none;">Drag tiles by their edges to reorder &middot; click the photo icon to manage a shoot &middot; click tiles to select them for merging &middot; red &times; to delete a shoot</div>
 
     <div class="dbm-gallery" id="dbmGallery"></div>
     <div class="dbm-spinner-wrap" id="dbmLoading">Loading the gallery&hellip;</div>
@@ -1019,7 +1019,7 @@
       <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">Click a video to make it the cover, or click the &times; to delete it.</p>
       <div class="dbm-cover-grid" id="dbmVideoCoverGrid"></div>
       <div class="dbm-modal-actions" style="margin-bottom:10px;">
-        <label class="dbm-btn outline" id="dbmAddMoreVideosLabel" style="flex:1; text-align:center; cursor:pointer;">+ Add more videos</label>
+        <label class="dbm-btn outline" for="dbmAddMoreVideosInput" id="dbmAddMoreVideosLabel" style="flex:1; text-align:center; cursor:pointer;">+ Add more videos</label>
         <input type="file" id="dbmAddMoreVideosInput" accept="video/*" multiple style="display:none;">
         <button class="dbm-btn outline" id="dbmCancelVideoCover" style="flex:1;">Close</button>
       </div>
@@ -1038,7 +1038,7 @@
       <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">Click a photo to make it the cover, or click the &times; to delete it.</p>
       <div class="dbm-cover-grid" id="dbmCoverGrid"></div>
       <div class="dbm-modal-actions" style="margin-bottom:10px;">
-        <label class="dbm-btn outline" id="dbmAddMorePhotosLabel" style="flex:1; text-align:center; cursor:pointer;">+ Add more photos</label>
+        <label class="dbm-btn outline" for="dbmAddMorePhotosInput" id="dbmAddMorePhotosLabel" style="flex:1; text-align:center; cursor:pointer;">+ Add more photos</label>
         <input type="file" id="dbmAddMorePhotosInput" accept="image/*" multiple style="display:none;">
         <button class="dbm-btn outline" id="dbmCancelCover" style="flex:1;">Close</button>
       </div>
