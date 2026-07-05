@@ -179,9 +179,16 @@
 
         if (state.organizeMode) {
           card.draggable = true;
-          card.addEventListener('dragstart', function () { state.dragSrcId = shoot.id; card.classList.add('dragging'); });
+          var mediaInCard = card.querySelector('img, video');
+          if (mediaInCard) mediaInCard.setAttribute('draggable', 'false');
+          card.addEventListener('dragstart', function (e) {
+            state.dragSrcId = shoot.id;
+            card.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', shoot.id);
+          });
           card.addEventListener('dragend', function () { card.classList.remove('dragging'); });
-          card.addEventListener('dragover', function (e) { e.preventDefault(); card.classList.add('drag-over'); });
+          card.addEventListener('dragover', function (e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; card.classList.add('drag-over'); });
           card.addEventListener('dragleave', function () { card.classList.remove('drag-over'); });
           card.addEventListener('drop', function (e) {
             e.preventDefault();
