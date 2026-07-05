@@ -851,7 +851,7 @@
       <button class="dbm-organize-btn" id="dbmOrganizeBtn" style="display:none;">Organize</button>
       <button class="dbm-merge-btn" id="dbmMergeBtn" style="display:none;">Merge selected (<span id="dbmMergeCount">0</span>)</button>
     </div>
-    <div class="dbm-organize-hint" id="dbmOrganizeHint" style="display:none;">Drag tiles by their edges to reorder &middot; click the photo icon to manage a shoot &middot; click tiles to select them for merging &middot; red &times; to delete a shoot</div>
+    <div class="dbm-organize-hint" id="dbmOrganizeHint" style="display:none;">Hold and drag any tile to reorder &middot; use ‹ › arrows to move one step &middot; click the image icon to manage photos &middot; red &times; to delete a shoot</div>
 
     <div class="dbm-gallery" id="dbmGallery"></div>
     <div class="dbm-spinner-wrap" id="dbmLoading">Loading the gallery&hellip;</div>
@@ -871,7 +871,7 @@
       <button class="dbm-organize-btn" id="dbmOrganizeVideoBtn" style="display:none;">Organize</button>
       <button class="dbm-merge-btn" id="dbmMergeVideoBtn" style="display:none;">Merge selected (<span id="dbmMergeVideoCount">0</span>)</button>
     </div>
-    <div class="dbm-organize-hint" id="dbmOrganizeVideoHint" style="display:none;">Drag tiles to reorder &middot; click the play icon to change a shoot's cover &middot; click tiles to select them for merging</div>
+    <div class="dbm-organize-hint" id="dbmOrganizeVideoHint" style="display:none;">Hold and drag any tile to reorder &middot; use ‹ › arrows to move one step &middot; click the video icon to manage videos &middot; red &times; to delete a shoot</div>
 
     <div class="dbm-gallery" id="dbmVideoGallery"></div>
     <div class="dbm-spinner-wrap" id="dbmVideoLoading">Loading videos&hellip;</div>
@@ -1019,8 +1019,7 @@
       <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">Click a video to make it the cover, or click the &times; to delete it.</p>
       <div class="dbm-cover-grid" id="dbmVideoCoverGrid"></div>
       <div class="dbm-modal-actions" style="margin-bottom:10px;">
-        <label class="dbm-btn outline" for="dbmAddMoreVideosInput" id="dbmAddMoreVideosLabel" style="flex:1; text-align:center; cursor:pointer;">+ Add more videos</label>
-        <input type="file" id="dbmAddMoreVideosInput" accept="video/*" multiple style="display:none;">
+        <button class="dbm-btn outline" id="dbmAddMoreVideosLabel" style="flex:1; text-align:center; cursor:pointer;">+ Add more videos</button>
         <button class="dbm-btn outline" id="dbmCancelVideoCover" style="flex:1;">Close</button>
       </div>
       <div class="dbm-modal-status" id="dbmVideoCoverStatus"></div>
@@ -1038,8 +1037,7 @@
       <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">Click a photo to make it the cover, or click the &times; to delete it.</p>
       <div class="dbm-cover-grid" id="dbmCoverGrid"></div>
       <div class="dbm-modal-actions" style="margin-bottom:10px;">
-        <label class="dbm-btn outline" for="dbmAddMorePhotosInput" id="dbmAddMorePhotosLabel" style="flex:1; text-align:center; cursor:pointer;">+ Add more photos</label>
-        <input type="file" id="dbmAddMorePhotosInput" accept="image/*" multiple style="display:none;">
+        <button class="dbm-btn outline" id="dbmAddMorePhotosLabel" style="flex:1; text-align:center; cursor:pointer;">+ Add more photos</button>
         <button class="dbm-btn outline" id="dbmCancelCover" style="flex:1;">Close</button>
       </div>
       <div class="dbm-modal-status" id="dbmCoverStatus"></div>
@@ -1150,6 +1148,10 @@
   <button class="dbm-login-trigger" id="dbmLoginTrigger" aria-label="Admin login" title="Admin login">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
   </button>
+
+  <!-- Hidden file inputs at body level so browser can open them reliably -->
+  <input type="file" id="dbmAddMorePhotosInput" accept="image/*" multiple style="display:none; position:fixed; top:-9999px;">
+  <input type="file" id="dbmAddMoreVideosInput" accept="video/*" multiple style="display:none; position:fixed; top:-9999px;">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
