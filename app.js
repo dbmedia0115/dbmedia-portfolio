@@ -232,8 +232,23 @@
       renderCounts();
     }
 
-    async function persistOrder(orderedShoots) {
-      var updates = orderedShoots.map(function (s, idx) {
+    // Reflect a reordered filtered list back into the global state.shoots array,
+    // leaving shoots from other categories in their existing positions. This is
+    // the step that was missing before: previously the reordered copy was thrown
+    // away, so state.shoots kept its old order and the grid never moved.
+    function applyFilteredOrder(newFiltered) {
+      var inFiltered = {};
+      newFiltered.forEach(function (s) { inFiltered[s.id] = true; });
+      var queue = newFiltered.slice();
+      state.shoots = state.shoots.map(function (s) {
+        return inFiltered[s.id] ? queue.shift() : s;
+      });
+    }
+
+    // Write the current global order to the DB as display_order 0..n.
+    async function persistOrder() {
+      var updates = state.shoots.map(function (s, idx) {
+        s.display_order = idx;
         return supabase.from(cfg.shootTable).update({ display_order: idx }).eq('id', s.id);
       });
       await Promise.all(updates);
@@ -246,9 +261,9 @@
       var reordered = currentList.slice();
       var moved = reordered.splice(idx, 1)[0];
       reordered.splice(newIdx, 0, moved);
-      reordered.forEach(function (s, i) { s.display_order = i; });
+      applyFilteredOrder(reordered);
       renderGallery();
-      await persistOrder(reordered);
+      await persistOrder();
     }
 
     async function reorderShoots(srcId, targetId, currentList) {
@@ -258,9 +273,9 @@
       var reordered = currentList.slice();
       var moved = reordered.splice(srcIdx, 1)[0];
       reordered.splice(targetIdx, 0, moved);
-      reordered.forEach(function (s, i) { s.display_order = i; });
+      applyFilteredOrder(reordered);
       renderGallery();
-      await persistOrder(reordered);
+      await persistOrder();
     }
 
     var nameSaveHandler = null;
@@ -999,6 +1014,7 @@
     el('dbmVideosSection').style.display = name === 'videos' ? 'block' : 'none';
     el('dbmReviewsSection').style.display = name === 'reviews' ? 'block' : 'none';
     el('dbmFaqSection').style.display = name === 'faq' ? 'block' : 'none';
+    el('dbmPricesSection').style.display = name === 'prices' ? 'block' : 'none';
     el('dbmContactSection').style.display = name === 'contact' ? 'block' : 'none';
     el('dbmTestimonialsTeaser').style.display = name === 'work' ? 'block' : 'none';
     document.querySelector('.dbm-hero').style.display = name === 'work' ? 'block' : 'none';
