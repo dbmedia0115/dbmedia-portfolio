@@ -713,8 +713,84 @@
       if (siteSettings[key]) btn.textContent = siteSettings[key];
     });
 
+    applyPricing();
     applyLogoTitleTransform();
   }
+
+  // ---------- Editable pricing ----------
+  // Every editable price/label in the Prices section carries a data-price-key.
+  // Saved values live in site_settings under the single key "pricing_json".
+  function pricesEls() {
+    return document.querySelectorAll('#dbmPricesSection [data-price-key]');
+  }
+
+  function applyPricing() {
+    if (!siteSettings.pricing_json) return;
+    var data;
+    try { data = JSON.parse(siteSettings.pricing_json); } catch (e) { return; }
+    pricesEls().forEach(function (elm) {
+      var k = elm.getAttribute('data-price-key');
+      if (data[k] !== undefined) elm.textContent = data[k];
+    });
+  }
+
+  function gatherPricing() {
+    var data = {};
+    pricesEls().forEach(function (elm) {
+      data[elm.getAttribute('data-price-key')] = elm.textContent.trim();
+    });
+    return data;
+  }
+
+  var pricesSnapshot = null;
+
+  function setPricesEditing(on) {
+    var section = el('dbmPricesSection');
+    section.classList.toggle('editing', on);
+    pricesEls().forEach(function (elm) { elm.setAttribute('contenteditable', on ? 'true' : 'false'); });
+    el('dbmPricesEditBtn').style.display = on ? 'none' : 'inline-block';
+    el('dbmPricesSaveBtn').style.display = on ? 'inline-block' : 'none';
+    el('dbmPricesCancelBtn').style.display = on ? 'inline-block' : 'none';
+  }
+
+  function refreshPricesAdminUI() {
+    el('dbmPricesAdmin').style.display = isAdmin ? 'block' : 'none';
+    if (!isAdmin) setPricesEditing(false);
+  }
+  adminUIRefreshers.push(refreshPricesAdminUI);
+
+  el('dbmPricesEditBtn').addEventListener('click', function () {
+    pricesSnapshot = gatherPricing();
+    setPricesEditing(true);
+  });
+
+  el('dbmPricesCancelBtn').addEventListener('click', function () {
+    if (pricesSnapshot) {
+      pricesEls().forEach(function (elm) {
+        var k = elm.getAttribute('data-price-key');
+        if (pricesSnapshot[k] !== undefined) elm.textContent = pricesSnapshot[k];
+      });
+    }
+    setPricesEditing(false);
+    el('dbmPricesStatus').textContent = '';
+  });
+
+  el('dbmPricesSaveBtn').addEventListener('click', async function () {
+    var status = el('dbmPricesStatus');
+    status.textContent = 'Saving…';
+    try {
+      var json = JSON.stringify(gatherPricing());
+      var { error } = await supabase.from('site_settings').upsert([{ key: 'pricing_json', value: json }]);
+      if (error) throw error;
+      siteSettings.pricing_json = json;
+      setPricesEditing(false);
+      status.textContent = 'Saved.';
+      setTimeout(function () { status.textContent = ''; }, 1500);
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'Could not save: ' + (err.message || 'unknown error');
+    }
+  });
 
   function applyLogoTitleTransform() {
     var logoScale = parseFloat(siteSettings.logo_size) || 1;
