@@ -123,7 +123,7 @@
       if (cfg.mediaType === 'video') {
         return '<video src="' + item.url + '" ' + (extraAttrs || '') + ' muted playsinline preload="metadata"></video>';
       }
-      return '<img src="' + item.url + '" alt="' + cfg.sectionName + ' media" loading="lazy" ' + (extraAttrs || '') + '>';
+      return '<img src="' + item.url + '" alt="Dream Big Media — ' + cfg.sectionName + ' photography in Nottingham" loading="lazy" ' + (extraAttrs || '') + '>';
     }
 
     function renderGallery() {
@@ -148,6 +148,9 @@
           (state.organizeMode ? '<div class="dbm-card-move"><button class="dbm-move-left" aria-label="Move earlier" ' + (idx === 0 ? 'disabled' : '') + '>&#8249;</button><button class="dbm-move-right" aria-label="Move later" ' + (idx === filtered.length - 1 ? 'disabled' : '') + '>&#8250;</button><button class="dbm-delete-shoot" aria-label="Delete shoot" title="Delete this shoot">&times;</button></div>' : '');
 
         var mediaEl = card.querySelector(cfg.mediaType === 'video' ? 'video' : 'img');
+        if (cfg.mediaType !== 'video') {
+          mediaEl.setAttribute('alt', 'Dream Big Media — ' + tagLabel + ' ' + shoot.category + ' shoot in Nottingham');
+        }
         mediaEl.addEventListener('click', function () {
           if (state.organizeMode) {
             toggleMergeSelection(shoot.id, card);
