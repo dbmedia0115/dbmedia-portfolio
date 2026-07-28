@@ -10,6 +10,52 @@
 <meta property="og:description" content="Event, portrait, and fashion photography &amp; videography based in Nottingham, UK.">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#f5f5f0">
+<meta property="og:image" content="https://dbmedia0115.github.io/dbmedia-portfolio/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:title" content="Dream Big Media — Photographer &amp; Videographer in Nottingham, UK">
+<meta name="twitter:description" content="Event, portrait, and fashion photography &amp; videography based in Nottingham, UK.">
+<meta name="twitter:image" content="https://dbmedia0115.github.io/dbmedia-portfolio/og-image.jpg">
+<link rel="canonical" href="https://dbmedia0115.github.io/dbmedia-portfolio/">
+<meta property="og:url" content="https://dbmedia0115.github.io/dbmedia-portfolio/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfessionalService",
+  "name": "Dream Big Media",
+  "description": "Event, portrait, and fashion photography and videography based in Nottingham, UK.",
+  "image": "https://dbmedia0115.github.io/dbmedia-portfolio/og-image.jpg",
+  "url": "https://dbmedia0115.github.io/dbmedia-portfolio/",
+  "areaServed": "Nottingham, UK",
+  "address": { "@type": "PostalAddress", "addressLocality": "Nottingham", "addressCountry": "GB" },
+  "priceRange": "££",
+  "sameAs": [
+    "https://instagram.com/dbmedia.1",
+    "https://tiktok.com/@samuel2junior",
+    "https://facebook.com/dbmedia.1"
+  ],
+  "knowsAbout": ["Event photography", "Portrait photography", "Fashion photography", "Videography"]
+}
+</script>
+<script>
+(function () {
+  var page = location.href.split('#')[0].split('?')[0];
+  var dir = location.origin + location.pathname.replace(/[^/]*$/, '');
+  function set(sel, attr, val) { var e = document.querySelector(sel); if (e) e.setAttribute(attr, val); }
+  set('link[rel="canonical"]', 'href', page);
+  set('meta[property="og:url"]', 'content', page);
+  set('meta[property="og:image"]', 'content', dir + 'og-image.jpg');
+  set('meta[name="twitter:image"]', 'content', dir + 'og-image.jpg');
+  try {
+    var ld = document.querySelector('script[type="application/ld+json"]');
+    if (ld) { var o = JSON.parse(ld.textContent); o.url = dir; o.image = dir + 'og-image.jpg'; ld.textContent = JSON.stringify(o); }
+  } catch (e) {}
+})();
+</script>
 <style>
 
   @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap');
