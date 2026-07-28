@@ -946,10 +946,19 @@
   // ---------- Testimonials ----------
   var testimonialsCache = [];
 
+  function starsHtml(rating) {
+    var r = Math.max(1, Math.min(5, parseInt(rating, 10) || 5));
+    return '<p class="dbm-testimonial-stars" aria-label="' + r + ' out of 5 stars" ' +
+      'style="color:#e0a500;letter-spacing:3px;font-size:17px;margin-bottom:8px;">' +
+      '★'.repeat(r) + '☆'.repeat(5 - r) + '</p>';
+  }
+
   function buildTestimonialCard(t) {
     var card = document.createElement('div');
     card.className = 'dbm-testimonial-card';
-    card.innerHTML = '<p class="dbm-testimonial-quote">&ldquo;' + t.quote + '&rdquo;</p><p class="dbm-testimonial-name">' + t.client_name + '</p>';
+    card.innerHTML = starsHtml(t.rating) +
+      '<p class="dbm-testimonial-quote">&ldquo;' + t.quote + '&rdquo;</p>' +
+      '<p class="dbm-testimonial-name">' + t.client_name + '</p>';
     return card;
   }
 
@@ -982,6 +991,12 @@
         '<input type="text" class="dbm-t-name" value="' + (t.client_name || '').replace(/"/g, '&quot;') + '">' +
         '<label>Quote</label>' +
         '<textarea class="dbm-t-quote" rows="3">' + (t.quote || '') + '</textarea>' +
+        '<label>Rating</label>' +
+        '<select class="dbm-t-rating">' +
+          [5, 4, 3, 2, 1].map(function (n) {
+            return '<option value="' + n + '"' + ((parseInt(t.rating, 10) || 5) === n ? ' selected' : '') + '>' + n + (n === 1 ? ' star' : ' stars') + '</option>';
+          }).join('') +
+        '</select>' +
         '<div class="dbm-testimonial-row-actions">' +
           '<button class="dbm-testimonial-move-btn dbm-t-up" ' + (idx === 0 ? 'disabled' : '') + '>&#8593; Move up</button>' +
           '<button class="dbm-testimonial-move-btn dbm-t-down" ' + (idx === testimonialsCache.length - 1 ? 'disabled' : '') + '>&#8595; Move down</button>' +
@@ -992,11 +1007,12 @@
       row.querySelector('.dbm-t-save').addEventListener('click', async function () {
         var name = row.querySelector('.dbm-t-name').value.trim();
         var quote = row.querySelector('.dbm-t-quote').value.trim();
+        var rating = parseInt(row.querySelector('.dbm-t-rating').value, 10) || 5;
         if (!name || !quote) { el('dbmTestimonialsStatus').textContent = 'Name and quote cannot be empty.'; return; }
         el('dbmTestimonialsStatus').textContent = 'Saving…';
-        var { error } = await supabase.from('testimonials').update({ client_name: name, quote: quote }).eq('id', t.id);
+        var { error } = await supabase.from('testimonials').update({ client_name: name, quote: quote, rating: rating }).eq('id', t.id);
         if (error) { el('dbmTestimonialsStatus').textContent = 'Could not save: ' + error.message; return; }
-        t.client_name = name; t.quote = quote;
+        t.client_name = name; t.quote = quote; t.rating = rating;
         el('dbmTestimonialsStatus').textContent = 'Saved.';
         await loadTestimonials();
         setTimeout(function () { el('dbmTestimonialsStatus').textContent = ''; }, 1200);
@@ -1048,6 +1064,7 @@
     var { error } = await supabase.from('testimonials').insert({
       client_name: 'New client',
       quote: 'Edit this quote…',
+      rating: 5,
       display_order: maxOrder + 1
     });
     if (error) { el('dbmTestimonialsStatus').textContent = 'Could not add: ' + error.message; return; }
