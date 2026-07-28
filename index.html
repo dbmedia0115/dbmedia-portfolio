@@ -885,8 +885,21 @@
   </section>
 
   <section class="dbm-section" id="dbmPricesSection" style="display:none;">
+    <style>
+      #dbmPricesSection [data-price-key]{transition:outline .15s ease;}
+      #dbmPricesSection.editing [data-price-key]{outline:1px dashed var(--accent);outline-offset:3px;border-radius:3px;cursor:text;min-width:20px;display:inline-block;}
+      #dbmPricesSection.editing [data-price-key]:focus{outline:2px solid var(--accent);background:rgba(140,29,24,.06);}
+    </style>
     <h2 class="dbm-section-title dbm-display">Prices</h2>
-    <p style="text-align:center;color:var(--muted);max-width:640px;margin:0 auto 32px;">Straightforward hourly rates. 50% deposit secures your date, balance due at the end of the session.</p>
+
+    <div id="dbmPricesAdmin" style="display:none;text-align:center;margin:-6px auto 22px;">
+      <button class="dbm-btn" id="dbmPricesEditBtn">Edit prices</button>
+      <button class="dbm-btn" id="dbmPricesSaveBtn" style="display:none;">Save</button>
+      <button class="dbm-btn outline" id="dbmPricesCancelBtn" style="display:none;">Cancel</button>
+      <span id="dbmPricesStatus" style="margin-left:10px;color:var(--muted);font-size:14px;"></span>
+    </div>
+
+    <p style="text-align:center;color:var(--muted);max-width:640px;margin:0 auto 32px;"><span data-price-key="intro">Straightforward hourly rates. 50% deposit secures your date, balance due at the end of the session.</span></p>
 
     <div style="display:flex;flex-wrap:wrap;gap:24px;max-width:920px;margin:0 auto;align-items:flex-start;">
 
@@ -894,55 +907,55 @@
         <h3 style="margin:0 0 4px;font-size:22px;letter-spacing:1px;text-transform:uppercase;">Photo</h3>
         <div style="height:2px;background:var(--accent);width:44px;margin-bottom:18px;"></div>
 
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>1hr shoot</span><strong>£80</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>2hr shoot</span><strong>£160</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>3hr shoot</span><strong>£240</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>4hr shoot</span><strong>£320</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>5hr shoot</span><strong>£400</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>6hr shoot</span><strong>£480</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>Full day (8–12hr)</span><strong>£800</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="ph_l1">1hr shoot</span><strong data-price-key="ph_p1">£80</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="ph_l2">2hr shoot</span><strong data-price-key="ph_p2">£160</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="ph_l3">3hr shoot</span><strong data-price-key="ph_p3">£240</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="ph_l4">4hr shoot</span><strong data-price-key="ph_p4">£320</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="ph_l5">5hr shoot</span><strong data-price-key="ph_p5">£400</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="ph_l6">6hr shoot</span><strong data-price-key="ph_p6">£480</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="ph_l7">Full day (8&ndash;12hr)</span><strong data-price-key="ph_p7">£800</strong></div>
 
         <p style="font-weight:700;margin:20px 0 6px;text-transform:uppercase;font-size:13px;letter-spacing:0.5px;">Each shoot includes</p>
         <ul style="margin:0;padding-left:18px;color:var(--muted);line-height:1.6;">
           <li>Edited high-resolution images (number varies by package)</li>
           <li>Online gallery for easy download</li>
-          <li>Standard delivery: 3–4 days</li>
+          <li>Standard delivery: 3&ndash;4 days</li>
         </ul>
 
         <p style="font-weight:700;margin:18px 0 6px;text-transform:uppercase;font-size:13px;letter-spacing:0.5px;">Add-on</p>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line);"><span>Next-day edit delivery</span><strong>£20</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line);"><span data-price-key="ph_a1_l">Next-day edit delivery</span><strong data-price-key="ph_a1_p">£20</strong></div>
       </div>
 
       <div style="flex:1 1 380px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:28px 26px;">
         <h3 style="margin:0 0 4px;font-size:22px;letter-spacing:1px;text-transform:uppercase;">Video</h3>
         <div style="height:2px;background:var(--accent);width:44px;margin-bottom:18px;"></div>
 
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>1hr shoot</span><strong>£100</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>2hr shoot</span><strong>£200</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>3hr shoot</span><strong>£300</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>4hr shoot</span><strong>£400</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>5hr shoot</span><strong>£500</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>Full day (8–10hr)</span><strong>£900</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="v_l1">1hr shoot</span><strong data-price-key="v_p1">£100</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="v_l2">2hr shoot</span><strong data-price-key="v_p2">£200</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="v_l3">3hr shoot</span><strong data-price-key="v_p3">£300</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="v_l4">4hr shoot</span><strong data-price-key="v_p4">£400</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="v_l5">5hr shoot</span><strong data-price-key="v_p5">£500</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="v_l6">Full day (8&ndash;10hr)</span><strong data-price-key="v_p6">£900</strong></div>
 
         <p style="font-weight:700;margin:20px 0 6px;text-transform:uppercase;font-size:13px;letter-spacing:0.5px;">Each shoot includes</p>
         <ul style="margin:0;padding-left:18px;color:var(--muted);line-height:1.6;">
-          <li>1 edited highlight video (up to 60–90 sec)</li>
+          <li>1 edited highlight video (up to 60&ndash;90 sec)</li>
           <li>Raw footage available on request</li>
           <li>Standard delivery: 7 days</li>
         </ul>
 
         <p style="font-weight:700;margin:18px 0 6px;text-transform:uppercase;font-size:13px;letter-spacing:0.5px;">Add-ons</p>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line);"><span>Extra short-form clip (Reel/TikTok)</span><strong>£15 each</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>4-pack of extra clips</span><strong>£50</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>Next-day rush delivery</span><strong>£50</strong></div>
-        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span>Raw footage handover</span><strong>2× rate</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-top:1px solid var(--line);"><span data-price-key="v_a1_l">Extra short-form clip (Reel/TikTok)</span><strong data-price-key="v_a1_p">£15 each</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="v_a2_l">4-pack of extra clips</span><strong data-price-key="v_a2_p">£50</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="v_a3_l">Next-day rush delivery</span><strong data-price-key="v_a3_p">£50</strong></div>
+        <div class="dbm-price-row" style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);"><span data-price-key="v_a4_l">Raw footage handover</span><strong data-price-key="v_a4_p">2&times; rate</strong></div>
       </div>
 
     </div>
 
     <div style="max-width:920px;margin:26px auto 0;display:flex;flex-wrap:wrap;gap:24px;color:var(--muted);font-size:14px;line-height:1.6;">
-      <div style="flex:1 1 380px;"><strong style="color:var(--ink);">Travel &amp; location</strong><br>Prices may change depending on distance and travel time. This is always agreed with you beforehand.</div>
-      <div style="flex:1 1 380px;"><strong style="color:var(--ink);">Booking &amp; deposits</strong><br>50% deposit secures your date. Deposit is non-refundable, but reschedule free if changed 48hrs+ before the session. Remaining balance due at the end.</div>
+      <div style="flex:1 1 380px;"><strong style="color:var(--ink);">Travel &amp; location</strong><br><span data-price-key="note_travel">Prices may change depending on distance and travel time. This is always agreed with you beforehand.</span></div>
+      <div style="flex:1 1 380px;"><strong style="color:var(--ink);">Booking &amp; deposits</strong><br><span data-price-key="note_booking">50% deposit secures your date. Deposit is non-refundable, but reschedule free if changed 48hrs+ before the session. Remaining balance due at the end.</span></div>
     </div>
 
     <div style="text-align:center;margin-top:34px;">
