@@ -1090,10 +1090,20 @@
     status.textContent = 'Sending…';
 
     try {
-      var { data, error } = await supabase.functions.invoke('send-contact-email', {
-        body: { name: name, email: email, message: message }
+      var res = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          access_key: 'c6bf49f1-9da0-4713-8f54-7cb0dd0f5a16',
+          subject: 'New booking enquiry — Dream Big Media',
+          from_name: 'Dream Big Media website',
+          name: name,
+          email: email,
+          message: message
+        })
       });
-      if (error) throw error;
+      var result = await res.json();
+      if (!result.success) throw new Error(result.message || 'Send failed');
       status.textContent = "Thanks — I'll get back to you soon.";
       el('dbmContactForm').reset();
     } catch (err) {
