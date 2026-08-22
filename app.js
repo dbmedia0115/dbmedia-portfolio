@@ -59,6 +59,53 @@
   el('dbmLogoutBtn').addEventListener('click', async function () { await supabase.auth.signOut(); });
 
   // ===================================================================
+  // YouTube / Vimeo embed helpers
+  // Videos can be either a real file in Supabase storage OR an external
+  // YouTube/Vimeo link. External links are stored in the same storage_path
+  // column, prefixed like "youtube:VIDEOID" or "vimeo:VIDEOID", so no
+  // database schema change is needed.
+  // ===================================================================
+  var PLAY_SVG = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+
+  function parseVideoLink(input) {
+    if (!input) return null;
+    var s = String(input).trim();
+    if (!s) return null;
+    var m;
+    // Vimeo: vimeo.com/123, player.vimeo.com/video/123, channels/x/123, vimeo:123
+    m = s.match(/vimeo\.com\/(?:[^?#]*\/)?(\d+)/i) || s.match(/^vimeo:(\d+)$/i);
+    if (m) return { provider: 'vimeo', id: m[1] };
+    // YouTube: watch?v=, youtu.be/, shorts/, embed/, live/, v/, youtube:ID
+    m = s.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i)
+        || s.match(/^youtube:([A-Za-z0-9_-]{11})$/i);
+    if (m) return { provider: 'youtube', id: m[1] };
+    // Bare 11-char YouTube id
+    if (/^[A-Za-z0-9_-]{11}$/.test(s)) return { provider: 'youtube', id: s };
+    return null;
+  }
+  function embedRefToStorage(ref) { return ref.provider + ':' + ref.id; }
+  function parseStorageRef(path) {
+    if (!path) return null;
+    var m = String(path).match(/^(youtube|vimeo):(.+)$/i);
+    if (m) return { provider: m[1].toLowerCase(), id: m[2] };
+    if (/^https?:\/\//i.test(path)) return parseVideoLink(path);
+    return null;
+  }
+  function isEmbedRef(path) { return !!parseStorageRef(path); }
+  function embedPlayerUrl(ref) {
+    if (ref.provider === 'youtube') {
+      return 'https://www.youtube.com/embed/' + ref.id + '?rel=0&autoplay=1&playsinline=1';
+    }
+    return 'https://player.vimeo.com/video/' + ref.id + '?autoplay=1';
+  }
+  function embedThumbUrl(ref) {
+    if (ref.provider === 'youtube') {
+      return 'https://i.ytimg.com/vi/' + ref.id + '/hqdefault.jpg';
+    }
+    return 'https://vumbnail.com/' + ref.id + '.jpg';
+  }
+
+  // ===================================================================
   // Generic gallery controller — used once for photos, once for videos
   // ===================================================================
   function createGalleryController(cfg) {
@@ -93,7 +140,14 @@
 
       var itemsByShoot = {};
       (itemRows || []).forEach(function (it) {
-        it.url = storagePublicUrl(it.storage_path);
+        var ref = parseStorageRef(it.storage_path);
+        if (ref) {
+          it.embed = ref;
+          it.url = embedPlayerUrl(ref);
+          it.thumb = embedThumbUrl(ref);
+        } else {
+          it.url = storagePublicUrl(it.storage_path);
+        }
         if (!itemsByShoot[it[cfg.itemShootFk]]) itemsByShoot[it[cfg.itemShootFk]] = [];
         itemsByShoot[it[cfg.itemShootFk]].push(it);
       });
@@ -120,10 +174,15 @@
     }
 
     function mediaTag(item, extraAttrs) {
-      if (cfg.mediaType === 'video') {
-        return '<video src="' + item.url + '" ' + (extraAttrs || '') + ' muted playsinline preload="metadata"></video>';
+      if (item && item.embed) {
+        return '<div class="dbm-media dbm-embed-thumb" ' + (extraAttrs || '') +
+          ' style="background-image:url(\'' + item.thumb + '\')">' +
+          '<span class="dbm-play-badge">' + PLAY_SVG + '</span></div>';
       }
-      return '<img src="' + item.url + '" alt="Dream Big Media — ' + cfg.sectionName + ' photography in Nottingham" loading="lazy" ' + (extraAttrs || '') + '>';
+      if (cfg.mediaType === 'video') {
+        return '<video class="dbm-media" src="' + item.url + '" ' + (extraAttrs || '') + ' muted playsinline preload="metadata"></video>';
+      }
+      return '<img class="dbm-media" src="' + item.url + '" alt="Dream Big Media — ' + cfg.sectionName + ' photography in Nottingham" loading="lazy" ' + (extraAttrs || '') + '>';
     }
 
     function renderGallery() {
@@ -147,7 +206,7 @@
           (state.organizeMode ? '<button class="dbm-card-cover-btn" aria-label="Manage media"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></button>' : '') +
           (state.organizeMode ? '<div class="dbm-card-move"><button class="dbm-move-left" aria-label="Move earlier" ' + (idx === 0 ? 'disabled' : '') + '>&#8249;</button><button class="dbm-move-right" aria-label="Move later" ' + (idx === filtered.length - 1 ? 'disabled' : '') + '>&#8250;</button><button class="dbm-delete-shoot" aria-label="Delete shoot" title="Delete this shoot">&times;</button></div>' : '');
 
-        var mediaEl = card.querySelector(cfg.mediaType === 'video' ? 'video' : 'img');
+        var mediaEl = card.querySelector('.dbm-media');
         if (cfg.mediaType !== 'video') {
           mediaEl.setAttribute('alt', 'Dream Big Media — ' + tagLabel + ' ' + shoot.category + ' shoot in Nottingham');
         }
@@ -173,7 +232,7 @@
             var shootName = (shoot.name && shoot.name.trim()) ? shoot.name : shoot.category;
             var confirmed = confirm('Delete the entire "' + shootName + '" shoot and all its photos/videos? This cannot be undone.');
             if (!confirmed) return;
-            var paths = shoot.items.map(function (it) { return it.storage_path; });
+            var paths = shoot.items.map(function (it) { return it.storage_path; }).filter(function (p) { return !isEmbedRef(p); });
             if (paths.length) await supabase.storage.from(cfg.bucket).remove(paths);
             await supabase.from(cfg.shootTable).delete().eq('id', shoot.id);
             await loadShoots();
@@ -351,7 +410,7 @@
             '<button class="dbm-cover-delete" title="Delete">&times;</button>' +
           '</div>';
 
-        pick.querySelector(cfg.mediaType === 'video' ? 'video' : 'img').addEventListener('click', async function () {
+        pick.querySelector('.dbm-media').addEventListener('click', async function () {
           shoot.cover = item;
           shoot[cfg.coverFk] = item.id;
           el(cfg.els.coverModal).classList.remove('show');
@@ -389,7 +448,7 @@
             return;
           }
           if (!confirm('Delete this permanently? This cannot be undone.')) return;
-          await supabase.storage.from(cfg.bucket).remove([item.storage_path]);
+          if (!isEmbedRef(item.storage_path)) await supabase.storage.from(cfg.bucket).remove([item.storage_path]);
           await supabase.from(cfg.itemTable).delete().eq('id', item.id);
           shoot.items = shoot.items.filter(function (p) { return p.id !== item.id; });
           if (!shoot.cover || shoot.cover.id === item.id) {
@@ -490,6 +549,7 @@
     el(cfg.els.uploadBtn).addEventListener('click', function () {
       el(cfg.els.uploadStatus).textContent = '';
       if (el(cfg.els.newShootNameInput)) el(cfg.els.newShootNameInput).value = '';
+      if (cfg.els.linkInput && el(cfg.els.linkInput)) el(cfg.els.linkInput).value = '';
       populateShootSelect();
       updateNewShootNameVisibility();
       uploadModal.classList.add('show');
@@ -498,6 +558,7 @@
       uploadModal.classList.remove('show');
       el(cfg.els.fileInput).value = '';
       if (el(cfg.els.newShootNameInput)) el(cfg.els.newShootNameInput).value = '';
+      if (cfg.els.linkInput && el(cfg.els.linkInput)) el(cfg.els.linkInput).value = '';
     });
     uploadModal.addEventListener('click', function (e) { if (e.target === this) this.classList.remove('show'); });
     el(cfg.els.shootSelect).addEventListener('change', updateNewShootNameVisibility);
@@ -527,11 +588,20 @@
       var shootChoice = el(cfg.els.shootSelect).value;
       var status = el(cfg.els.uploadStatus);
 
-      if (!fileInput.files || !fileInput.files.length) {
-        status.textContent = 'Choose at least one file.';
+      var linkEl = cfg.els.linkInput ? el(cfg.els.linkInput) : null;
+      var linkVal = linkEl ? linkEl.value.trim() : '';
+      var linkRef = linkVal ? parseVideoLink(linkVal) : null;
+      var hasFiles = fileInput.files && fileInput.files.length;
+
+      if (linkVal && !linkRef) {
+        status.textContent = 'That does not look like a YouTube or Vimeo link — check it and try again.';
         return;
       }
-      status.textContent = 'Uploading…';
+      if (!linkRef && !hasFiles) {
+        status.textContent = linkEl ? 'Paste a video link, or choose a file.' : 'Choose at least one file.';
+        return;
+      }
+      status.textContent = linkRef ? 'Saving…' : 'Uploading…';
 
       try {
         var shootId = shootChoice;
@@ -546,22 +616,42 @@
           shootId = newShoot.id;
         }
 
-        var files = Array.from(fileInput.files);
-        for (var i = 0; i < files.length; i++) {
-          var file = files[i];
-          var path = shootId + '/' + Date.now() + '-' + i + '.' + fileExt(file.name, cfg.mediaType === 'video' ? 'mp4' : 'jpg');
-          var { error: uploadErr } = await supabase.storage.from(cfg.bucket).upload(path, file);
-          if (uploadErr) throw uploadErr;
+        // When adding to an existing shoot, start ordering after its last item.
+        var baseOrder = 0;
+        if (shootChoice !== '__new__') {
+          var existingShoot = state.shoots.find(function (s) { return String(s.id) === String(shootId); });
+          if (existingShoot) baseOrder = existingShoot.items.reduce(function (m, it) { return Math.max(m, it.display_order || 0); }, -1) + 1;
+        }
 
-          var itemPayload = { storage_path: path, display_order: i };
-          itemPayload[cfg.itemShootFk] = shootId;
-          var { data: itemRow, error: itemErr } = await supabase
-            .from(cfg.itemTable).insert(itemPayload).select().single();
-          if (itemErr) throw itemErr;
+        if (linkRef) {
+          // External YouTube / Vimeo video — stored as a link, no file upload.
+          var embedPayload = { storage_path: embedRefToStorage(linkRef), display_order: baseOrder };
+          embedPayload[cfg.itemShootFk] = shootId;
+          var { data: embedRow, error: embedErr } = await supabase
+            .from(cfg.itemTable).insert(embedPayload).select().single();
+          if (embedErr) throw embedErr;
+          if (shootChoice === '__new__') {
+            var patchE = {}; patchE[cfg.coverFk] = embedRow.id;
+            await supabase.from(cfg.shootTable).update(patchE).eq('id', shootId);
+          }
+        } else {
+          var files = Array.from(fileInput.files);
+          for (var i = 0; i < files.length; i++) {
+            var file = files[i];
+            var path = shootId + '/' + Date.now() + '-' + i + '.' + fileExt(file.name, cfg.mediaType === 'video' ? 'mp4' : 'jpg');
+            var { error: uploadErr } = await supabase.storage.from(cfg.bucket).upload(path, file);
+            if (uploadErr) throw uploadErr;
 
-          if (shootChoice === '__new__' && i === 0) {
-            var patch = {}; patch[cfg.coverFk] = itemRow.id;
-            await supabase.from(cfg.shootTable).update(patch).eq('id', shootId);
+            var itemPayload = { storage_path: path, display_order: baseOrder + i };
+            itemPayload[cfg.itemShootFk] = shootId;
+            var { data: itemRow, error: itemErr } = await supabase
+              .from(cfg.itemTable).insert(itemPayload).select().single();
+            if (itemErr) throw itemErr;
+
+            if (shootChoice === '__new__' && i === 0) {
+              var patch = {}; patch[cfg.coverFk] = itemRow.id;
+              await supabase.from(cfg.shootTable).update(patch).eq('id', shootId);
+            }
           }
         }
 
@@ -570,11 +660,12 @@
         setTimeout(function () {
           uploadModal.classList.remove('show');
           fileInput.value = '';
+          if (linkEl) linkEl.value = '';
           status.textContent = '';
         }, 700);
       } catch (err) {
         console.error(err);
-        status.textContent = 'Upload failed: ' + (err.message || 'try a smaller file.');
+        status.textContent = (linkRef ? 'Could not save: ' : 'Upload failed: ') + (err.message || 'try again.');
       }
     });
 
@@ -590,12 +681,24 @@
     var item = lightboxSet[lightboxIndex];
     var imgEl = el('dbmLightboxImg');
     var videoEl = el('dbmLightboxVideo');
-    if (lightboxMediaType === 'video') {
+    var embedEl = el('dbmLightboxEmbed');
+    if (item && item.embed) {
+      imgEl.style.display = 'none';
+      videoEl.pause();
+      videoEl.style.display = 'none';
+      videoEl.src = '';
+      embedEl.style.display = 'block';
+      embedEl.src = item.url;
+    } else if (lightboxMediaType === 'video') {
+      if (embedEl) embedEl.src = '';
+      if (embedEl) embedEl.style.display = 'none';
       imgEl.style.display = 'none';
       videoEl.style.display = 'block';
       videoEl.src = item.url;
       videoEl.muted = false;
     } else {
+      if (embedEl) embedEl.src = '';
+      if (embedEl) embedEl.style.display = 'none';
       videoEl.pause();
       videoEl.style.display = 'none';
       imgEl.style.display = 'block';
@@ -631,6 +734,8 @@
     el('dbmLightboxImg').src = '';
     el('dbmLightboxVideo').pause();
     el('dbmLightboxVideo').src = '';
+    var embClose = el('dbmLightboxEmbed');
+    if (embClose) { embClose.src = ''; embClose.style.display = 'none'; }
     lightboxSet = [];
     lightboxIndex = 0;
   }
@@ -670,7 +775,7 @@
     els: {
       gallery: 'dbmVideoGallery', loading: 'dbmVideoLoading', empty: 'dbmVideoEmpty', filterAttr: 'data-vfilter',
       countPrefix: 'vcnt-', uploadBtn: 'dbmUploadVideoBtn', organizeBtn: 'dbmOrganizeVideoBtn', organizeHint: 'dbmOrganizeVideoHint',
-      mergeBtn: 'dbmMergeVideoBtn', mergeCount: 'dbmMergeVideoCount', uploadModal: 'dbmVideoModalBackdrop', fileInput: 'dbmVideoFileInput',
+      mergeBtn: 'dbmMergeVideoBtn', mergeCount: 'dbmMergeVideoCount', uploadModal: 'dbmVideoModalBackdrop', fileInput: 'dbmVideoFileInput', linkInput: 'dbmVideoLinkInput',
       catSelect: 'dbmVideoCatSelect', shootSelect: 'dbmVideoShootSelect', saveUpload: 'dbmSaveVideoUpload', cancelUpload: 'dbmCancelVideoUpload',
       uploadStatus: 'dbmVideoUploadStatus', coverModal: 'dbmVideoCoverModalBackdrop', coverGrid: 'dbmVideoCoverGrid', cancelCover: 'dbmCancelVideoCover',
       nameInput: 'dbmVideoShootNameInput', saveNameBtn: 'dbmSaveVideoShootName',
