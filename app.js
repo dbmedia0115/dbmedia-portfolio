@@ -822,7 +822,28 @@
     });
 
     applyPricing();
+    applyPricesVisibility();
     applyLogoTitleTransform();
+  }
+
+  // ---------- Prices page visibility ----------
+  // Stored in site_settings under "prices_hidden" ("1" = hidden, anything else = visible).
+  // When hidden, visitors don't see the Prices tab or section. You (logged in) always
+  // keep the tab so you can reach the toggle in the admin controls.
+  function applyPricesVisibility() {
+    var hidden = siteSettings.prices_hidden === '1';
+    var navBtn = document.querySelector('.dbm-nav button[data-section="prices"]');
+    if (navBtn) navBtn.style.display = (hidden && !isAdmin) ? 'none' : '';
+    // If a visitor is somehow on the Prices section while it's hidden, send them home.
+    if (hidden && !isAdmin && el('dbmPricesSection').style.display !== 'none') {
+      dbmShowSection('work');
+    }
+    var vb = el('dbmPricesVisibilityBtn');
+    if (vb) vb.textContent = hidden ? 'Show Prices page' : 'Hide Prices page';
+    var note = el('dbmPricesVisibilityNote');
+    if (note) note.textContent = (isAdmin && hidden)
+      ? 'The Prices page is hidden from visitors. You can still see it here while logged in.'
+      : '';
   }
 
   // ---------- Editable pricing ----------
@@ -864,8 +885,30 @@
   function refreshPricesAdminUI() {
     el('dbmPricesAdmin').style.display = isAdmin ? 'block' : 'none';
     if (!isAdmin) setPricesEditing(false);
+    applyPricesVisibility();
   }
   adminUIRefreshers.push(refreshPricesAdminUI);
+
+  el('dbmPricesVisibilityBtn').addEventListener('click', async function () {
+    var btn = this;
+    var status = el('dbmPricesStatus');
+    var next = siteSettings.prices_hidden === '1' ? '0' : '1';
+    btn.disabled = true;
+    status.textContent = 'Saving…';
+    try {
+      var { error } = await supabase.from('site_settings').upsert([{ key: 'prices_hidden', value: next }]);
+      if (error) throw error;
+      siteSettings.prices_hidden = next;
+      applyPricesVisibility();
+      status.textContent = next === '1' ? 'Prices page hidden from visitors.' : 'Prices page is now visible.';
+      setTimeout(function () { status.textContent = ''; }, 2500);
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'Could not save: ' + (err.message || 'unknown error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   el('dbmPricesEditBtn').addEventListener('click', function () {
     pricesSnapshot = gatherPricing();
