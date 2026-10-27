@@ -854,6 +854,9 @@
 
   /* ================= v2: motion, showreel, services, about, booking ================= */
   .dbm-header { transition: padding .25s ease, box-shadow .25s ease; }
+  .dbm-logo-wrap, .dbm-logo-mark, .dbm-logo-text { outline: none !important; border: none !important; box-shadow: none !important; }
+  .dbm-logo-wrap:focus-visible { outline: 2px solid var(--accent) !important; outline-offset: 4px; }
+  .dbm-logo-mark.draggable:hover, .dbm-logo-text.draggable:hover, .dbm-logo-mark.dragging, .dbm-logo-text.dragging { outline: 1.5px dashed var(--accent) !important; }
   .dbm-header.scrolled { padding-top: 8px; padding-bottom: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
 
   /* Hero + showreel */
