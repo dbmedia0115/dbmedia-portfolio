@@ -942,6 +942,11 @@
     if (hidden && !isAdmin && el('dbmPricesSection').style.display !== 'none') {
       dbmShowSection('work');
     }
+    var hideForVisitor = hidden && !isAdmin;
+    document.querySelectorAll('.dbm-service-link').forEach(function (l) {
+      if (!l.getAttribute('data-orig')) l.setAttribute('data-orig', l.innerHTML);
+      l.innerHTML = hideForVisitor ? 'Get a quote &rarr;' : l.getAttribute('data-orig');
+    });
     var vb = el('dbmPricesVisibilityBtn');
     if (vb) vb.textContent = hidden ? 'Show Prices page' : 'Hide Prices page';
     var note = el('dbmPricesVisibilityNote');
@@ -1460,7 +1465,10 @@
   }
 
   document.querySelectorAll('.dbm-service').forEach(function (btn) {
-    btn.addEventListener('click', function () { dbmShowSection('prices'); });
+    btn.addEventListener('click', function () {
+      if (siteSettings.prices_hidden === '1' && !isAdmin) startEnquiry(btn.getAttribute('data-go-type'));
+      else dbmShowSection('prices');
+    });
   });
 
   var PKG_TYPES = { 'monthly': 'Monthly content', 'portraits': 'Portrait / fashion shoot', 'event': 'Event', 'content': 'Content day (photo + video)' };
