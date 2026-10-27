@@ -12,6 +12,7 @@
     { q: 'Do you travel outside Nottingham?', a: 'Yes. Prices may change depending on distance and travel time required, this is always discussed and agreed with you beforehand, so there are no surprises.' },
     { q: 'How does payment work?', a: 'A 50% deposit secures your date and is non-refundable, though you can reschedule for free if you give 48 hours notice or more. The remaining balance is due at the end of the session.' },
     { q: 'Can I get the raw, unedited footage?', a: 'Raw footage is available on request. For video projects, raw handover is priced at 2x the hourly shoot rate, since it involves additional file preparation.' },
+    { q: 'How do I book?', a: 'Send an enquiry with your date and what you have in mind. I will confirm availability and send a quote, and a 50% deposit locks in your date.' },
     { q: 'What kind of work do you take on?', a: 'Events, portraits, and fashion/editorial shoots are my main focus. If you have something a bit different in mind, reach out and we can talk through it.' }
   ];
 
@@ -123,7 +124,7 @@
     }
 
     async function loadShoots() {
-      el(cfg.els.loading).style.display = 'block';
+      el(cfg.els.loading).style.display = '';
       var { data: shootRows, error: shootErr } = await supabase
         .from(cfg.shootTable).select('*').order('display_order', { ascending: true });
       var { data: itemRows, error: itemErr } = await supabase
@@ -210,6 +211,25 @@
         if (cfg.mediaType !== 'video') {
           mediaEl.setAttribute('alt', 'Dream Big Media — ' + tagLabel + ' ' + shoot.category + ' shoot in Nottingham');
         }
+        // v2: fade/blur-up once the image is ready, stop the shimmer
+        var markLoaded = function () { mediaEl.classList.add('loaded'); card.classList.add('loaded'); };
+        if (mediaEl.tagName === 'IMG') {
+          if (mediaEl.complete && mediaEl.naturalWidth) markLoaded(); else { mediaEl.addEventListener('load', markLoaded); mediaEl.addEventListener('error', markLoaded); }
+        } else if (mediaEl.tagName === 'VIDEO') {
+          mediaEl.addEventListener('loadeddata', markLoaded);
+          if (window.matchMedia('(hover: hover)').matches) {
+            card.addEventListener('mouseenter', function () { if (!state.organizeMode) { var pr = mediaEl.play(); if (pr && pr.catch) pr.catch(function () {}); } });
+            card.addEventListener('mouseleave', function () { mediaEl.pause(); try { mediaEl.currentTime = 0; } catch (e) {} });
+          }
+        } else {
+          markLoaded();
+        }
+        if (!state.organizeMode && window.dbmReveal) {
+          card.classList.add('dbm-reveal');
+          card.style.transitionDelay = (idx % 6) * 60 + 'ms';
+          window.dbmReveal(card);
+        }
+
         mediaEl.addEventListener('click', function () {
           if (state.organizeMode) {
             toggleMergeSelection(shoot.id, card);
@@ -702,7 +722,12 @@
       videoEl.pause();
       videoEl.style.display = 'none';
       imgEl.style.display = 'block';
-      imgEl.src = item.url;
+      if (imgEl.getAttribute('src') !== item.url) {
+        imgEl.classList.add('swap');
+        imgEl.onload = function () { imgEl.classList.remove('swap'); };
+        setTimeout(function () { imgEl.classList.remove('swap'); }, 700);
+        imgEl.src = item.url;
+      }
     }
     var counter = el('dbmLightboxCounter');
     var prevBtn = el('dbmLightboxPrev');
@@ -746,6 +771,14 @@
   el('dbmLightboxPrev').addEventListener('click', function (e) { e.stopPropagation(); lightboxPrev(); });
   el('dbmLightboxNext').addEventListener('click', function (e) { e.stopPropagation(); lightboxNext(); });
   el('dbmLightbox').addEventListener('click', function (e) { if (e.target === this) closeLightbox(); });
+  (function () {
+    var sx = 0, sy = 0;
+    el('dbmLightbox').addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+    el('dbmLightbox').addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { if (dx < 0) lightboxNext(); else lightboxPrev(); }
+    }, { passive: true });
+  })();
   document.addEventListener('keydown', function (e) {
     if (!el('dbmLightbox').classList.contains('show')) return;
     if (e.key === 'Escape') closeLightbox();
@@ -798,8 +831,13 @@
   function applySiteSettings() {
     if (siteSettings.hero_eyebrow) el('dbmHeroEyebrow').textContent = siteSettings.hero_eyebrow;
     if (siteSettings.hero_heading) {
-      var parts = siteSettings.hero_heading.split('|');
-      el('dbmHeroHeading').innerHTML = parts.map(function (p) { return p.trim(); }).join('<br>');
+      var h1 = el('dbmHeroHeading');
+      h1.innerHTML = '';
+      siteSettings.hero_heading.split('|').forEach(function (part) {
+        var outer = document.createElement('span'); outer.className = 'dbm-line';
+        var inner = document.createElement('span'); inner.textContent = part.trim();
+        outer.appendChild(inner); h1.appendChild(outer);
+      });
     }
     if (siteSettings.hero_body) el('dbmHeroBody').textContent = siteSettings.hero_body;
     if (siteSettings.contact_heading) el('dbmContactHeading').textContent = siteSettings.contact_heading;
@@ -824,6 +862,72 @@
     applyPricing();
     applyPricesVisibility();
     applyLogoTitleTransform();
+    applyExtras();
+  }
+
+  // ---------- v2: showreel, about, WhatsApp, booking + deposit links ----------
+  var currentReel = null;
+  function applyShowreel() {
+    var link = (siteSettings.showreel_url || '').trim();
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) link = '';
+    if (link === currentReel) return;
+    currentReel = link;
+    var hero = el('dbmHero'), reel = el('dbmHeroReel');
+    reel.innerHTML = '';
+    if (!link) { hero.classList.remove('has-reel'); return; }
+    var ref = parseVideoLink(link);
+    if (ref) {
+      var f = document.createElement('iframe');
+      f.setAttribute('allow', 'autoplay; encrypted-media; picture-in-picture');
+      f.setAttribute('tabindex', '-1');
+      f.title = 'Showreel';
+      f.src = ref.provider === 'youtube'
+        ? 'https://www.youtube.com/embed/' + ref.id + '?autoplay=1&mute=1&loop=1&playlist=' + ref.id + '&controls=0&playsinline=1&modestbranding=1&rel=0&disablekb=1'
+        : 'https://player.vimeo.com/video/' + ref.id + '?background=1&autoplay=1&loop=1&muted=1';
+      reel.appendChild(f);
+    } else if (/^https?:\/\//i.test(link)) {
+      var v = document.createElement('video');
+      v.src = link; v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
+      v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+      reel.appendChild(v);
+      var pr = v.play(); if (pr && pr.catch) pr.catch(function () {});
+    } else { hero.classList.remove('has-reel'); return; }
+    hero.classList.add('has-reel');
+  }
+
+  function waLink() {
+    var digits = String(siteSettings.whatsapp_number || '').replace(/[^0-9]/g, '');
+    if (!digits) return '';
+    if (digits.indexOf('0') === 0) digits = '44' + digits.slice(1);
+    return 'https://wa.me/' + digits + '?text=' + encodeURIComponent("Hi Samuel, I found you on your website and I'd like to ask about a shoot.");
+  }
+
+  function applyExtras() {
+    applyShowreel();
+    if (siteSettings.about_heading) el('dbmAboutHeading').textContent = siteSettings.about_heading;
+    if (siteSettings.about_body) el('dbmAboutBody').textContent = siteSettings.about_body;
+    var img = (siteSettings.about_image_url || '').trim();
+    el('dbmAbout').classList.toggle('no-photo', !img);
+    if (img) el('dbmAboutImg').src = img;
+
+    var wa = waLink();
+    document.querySelectorAll('.dbm-wa-link').forEach(function (a) {
+      a.href = wa || '#';
+      if (a.id === 'dbmWaFloat') a.classList.toggle('show', !!wa);
+      else if (!a.closest('#dbmContactWhatsappCard')) a.style.display = wa ? '' : 'none';
+    });
+    el('dbmContactWhatsappCard').style.display = wa ? '' : 'none';
+
+    var book = (siteSettings.booking_url || '').trim();
+    el('dbmContactBookCard').style.display = book ? '' : 'none';
+    if (book) el('dbmBookCallLink').href = book;
+
+    var dep = (siteSettings.deposit_url || '').trim();
+    el('dbmDepositBtn').style.display = dep ? 'inline-block' : 'none';
+    if (dep) el('dbmDepositBtn').href = dep;
+
+    if (siteSettings.reply_note) el('dbmReplyNote').textContent = siteSettings.reply_note;
   }
 
   // ---------- Prices page visibility ----------
@@ -1018,6 +1122,14 @@
     el('dbmSetNavReviews').value = siteSettings.nav_label_reviews || 'Reviews';
     el('dbmSetNavFaq').value = siteSettings.nav_label_faq || 'FAQ';
     el('dbmSetNavContact').value = siteSettings.nav_label_contact || 'Contact';
+    el('dbmSetShowreel').value = siteSettings.showreel_url || '';
+    el('dbmSetAboutHeading').value = siteSettings.about_heading || el('dbmAboutHeading').textContent;
+    el('dbmSetAboutBody').value = siteSettings.about_body || el('dbmAboutBody').textContent;
+    el('dbmSetAboutImage').value = siteSettings.about_image_url || '';
+    el('dbmSetWhatsapp').value = siteSettings.whatsapp_number || '';
+    el('dbmSetBookingUrl').value = siteSettings.booking_url || '';
+    el('dbmSetDepositUrl').value = siteSettings.deposit_url || '';
+    el('dbmSetReplyNote').value = siteSettings.reply_note || el('dbmReplyNote').textContent;
     el('dbmSetLogoSize').value = siteSettings.logo_size || '1';
     el('dbmSetTitleSize').value = siteSettings.title_size || '1';
     el('dbmSettingsStatus').textContent = '';
@@ -1069,6 +1181,14 @@
       nav_label_reviews: el('dbmSetNavReviews').value,
       nav_label_faq: el('dbmSetNavFaq').value,
       nav_label_contact: el('dbmSetNavContact').value,
+      showreel_url: el('dbmSetShowreel').value.trim(),
+      about_heading: el('dbmSetAboutHeading').value,
+      about_body: el('dbmSetAboutBody').value,
+      about_image_url: el('dbmSetAboutImage').value.trim(),
+      whatsapp_number: el('dbmSetWhatsapp').value.trim(),
+      booking_url: el('dbmSetBookingUrl').value.trim(),
+      deposit_url: el('dbmSetDepositUrl').value.trim(),
+      reply_note: el('dbmSetReplyNote').value,
       logo_size: el('dbmSetLogoSize').value,
       title_size: el('dbmSetTitleSize').value,
       logo_pos_x: String(siteSettings.logo_pos_x || 0),
@@ -1228,9 +1348,14 @@
     var name = el('dbmContactName').value.trim();
     var email = el('dbmContactEmail').value.trim();
     var message = el('dbmContactMessage').value.trim();
+    var shootType = el('dbmContactType').value;
+    var shootDate = el('dbmContactDate').value;
+    var location = el('dbmContactLocation').value.trim();
+    var budget = el('dbmContactBudget').value;
+    var source = el('dbmContactSource').value;
 
-    if (!name || !email || !message) {
-      status.textContent = 'Please fill in every field.';
+    if (!name || !email || !message || !shootType) {
+      status.textContent = 'Please fill in the fields marked *.';
       return;
     }
 
@@ -1243,16 +1368,22 @@
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({
           access_key: 'c6bf49f1-9da0-4713-8f54-7cb0dd0f5a16',
-          subject: 'New booking enquiry — Dream Big Media',
+          subject: 'New enquiry: ' + shootType + (shootDate ? ' on ' + shootDate : '') + ' — ' + name,
           from_name: 'Dream Big Media website',
           name: name,
           email: email,
+          shoot_type: shootType,
+          date: shootDate || 'Not given',
+          location: location || 'Not given',
+          budget: budget || 'Not sure yet',
+          found_via: source || 'Not given',
           message: message
         })
       });
       var result = await res.json();
       if (!result.success) throw new Error(result.message || 'Send failed');
-      status.textContent = "Thanks — I'll get back to you soon.";
+      status.textContent = 'Thanks ' + name.split(' ')[0] + ", your enquiry's in. I'll be in touch soon.";
+      if (typeof gtag === 'function') gtag('event', 'generate_lead', { shoot_type: shootType });
       el('dbmContactForm').reset();
     } catch (err) {
       console.error(err);
@@ -1271,6 +1402,11 @@
     el('dbmPricesSection').style.display = name === 'prices' ? 'block' : 'none';
     el('dbmContactSection').style.display = name === 'contact' ? 'block' : 'none';
     el('dbmTestimonialsTeaser').style.display = name === 'work' ? 'block' : 'none';
+    el('dbmHomeExtras').style.display = name === 'work' ? 'block' : 'none';
+    ['dbmWorkSection', 'dbmVideosSection', 'dbmReviewsSection', 'dbmFaqSection', 'dbmPricesSection', 'dbmContactSection'].forEach(function (id) {
+      var node = el(id);
+      if (node.style.display !== 'none') { node.classList.remove('dbm-fade-in'); void node.offsetWidth; node.classList.add('dbm-fade-in'); }
+    });
     document.querySelector('.dbm-hero').style.display = name === 'work' ? 'block' : 'none';
     document.querySelectorAll('.dbm-nav button').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-section') === name);
@@ -1306,10 +1442,48 @@
     faqList.appendChild(div);
   });
 
+  // ---------- v2: scroll reveal, sticky header, quick-enquiry shortcuts ----------
+  var revealObserver = ('IntersectionObserver' in window) ? new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); revealObserver.unobserve(en.target); } });
+  }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 }) : null;
+  window.dbmReveal = function (node) { if (revealObserver) revealObserver.observe(node); else node.classList.add('in'); };
+  document.querySelectorAll('.dbm-reveal').forEach(window.dbmReveal);
+
+  var header = document.querySelector('.dbm-header');
+  window.addEventListener('scroll', function () { header.classList.toggle('scrolled', window.scrollY > 40); }, { passive: true });
+
+  function startEnquiry(type, note) {
+    dbmShowSection('contact');
+    if (type) el('dbmContactType').value = type;
+    if (note && !el('dbmContactMessage').value.trim()) el('dbmContactMessage').value = note;
+    setTimeout(function () { el('dbmContactName').focus({ preventScroll: true }); }, 500);
+  }
+
+  document.querySelectorAll('.dbm-service').forEach(function (btn) {
+    btn.addEventListener('click', function () { dbmShowSection('prices'); });
+  });
+
+  var PKG_TYPES = { 'monthly': 'Monthly content', 'portraits': 'Portrait / fashion shoot', 'event': 'Event', 'content': 'Content day (photo + video)' };
+  el('dbmPricesSection').addEventListener('click', function (e) {
+    if (this.classList.contains('editing')) return;
+    var card = e.target.closest('.dbm-pkg-card');
+    if (!card) return;
+    var row = card.parentElement, heading = row.previousElementSibling;
+    while (heading && !heading.classList.contains('dbm-pkg-heading')) heading = heading.previousElementSibling;
+    var headText = heading ? heading.textContent.trim() : '';
+    var key = Object.keys(PKG_TYPES).find(function (k) { return headText.toLowerCase().indexOf(k) !== -1; });
+    var pkgName = (card.querySelector('.dbm-pkg-name') || {}).textContent || '';
+    var pkgPrice = (card.querySelector('.dbm-pkg-price') || {}).textContent || '';
+    startEnquiry(key ? PKG_TYPES[key] : '', "I'm interested in the " + headText + ' ' + pkgName.trim() + ' package (' + pkgPrice.trim() + ').\n\n');
+  });
+
   // ---------- Boot ----------
   (async function init() {
+    var readyFallback = setTimeout(function () { document.body.classList.add('dbm-ready'); }, 1500);
     await checkSession();
     await loadSiteSettings();
+    clearTimeout(readyFallback);
+    document.body.classList.add('dbm-ready');
     await loadTestimonials();
     await photoGallery.loadShoots();
     await videoGallery.loadShoots();
