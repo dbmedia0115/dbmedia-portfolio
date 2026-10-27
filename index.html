@@ -852,6 +852,131 @@
   }
   .dbm-spinner-wrap { padding: 80px 24px; text-align: center; color: var(--muted); font-size: 14px; }
 
+  /* ================= v2: motion, showreel, services, about, booking ================= */
+  .dbm-header { transition: padding .25s ease, box-shadow .25s ease; }
+  .dbm-header.scrolled { padding-top: 8px; padding-bottom: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+
+  /* Hero + showreel */
+  .dbm-hero { position: relative; }
+  .dbm-hero > :not(.dbm-hero-reel) { position: relative; z-index: 1; }
+  .dbm-hero-reel { position: absolute; inset: 0; overflow: hidden; z-index: 0; background: #000; display: none; }
+  .dbm-hero-reel video, .dbm-hero-reel iframe { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); border: 0; pointer-events: none; }
+  .dbm-hero-reel video { width: 100%; height: 100%; object-fit: cover; }
+  .dbm-hero-reel iframe { width: 100vw; height: 56.25vw; min-height: 100%; min-width: 177.78vh; }
+  .dbm-hero-reel::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.2) 0%, rgba(0,0,0,.7) 100%); }
+  .dbm-hero.has-reel { max-width: none; min-height: min(80vh, 780px); padding-top: clamp(120px, 32vh, 300px); color: #fff; }
+  .dbm-hero.has-reel .dbm-hero-reel { display: block; }
+  .dbm-hero.has-reel p { color: rgba(255,255,255,.85); }
+  .dbm-hero.has-reel .dbm-hero-eyebrow { color: #fff; opacity: .85; }
+  .dbm-hero.has-reel .dbm-btn { background: #fff; color: #0a0a0a; border-color: #fff; }
+  .dbm-hero.has-reel .dbm-btn.outline { background: transparent; color: #fff; }
+
+  /* Hero intro: heading lines rise in, rest fades up */
+  .dbm-line { display: block; overflow: hidden; padding-bottom: 0.04em; }
+  .dbm-line > span { display: inline-block; }
+  body:not(.dbm-ready) .dbm-hero > :not(.dbm-hero-reel) { opacity: 0; }
+  body.dbm-ready .dbm-line > span { animation: dbmRise .9s cubic-bezier(.2,.7,.2,1) both; }
+  body.dbm-ready .dbm-line:nth-child(2) > span { animation-delay: .12s; }
+  body.dbm-ready .dbm-line:nth-child(3) > span { animation-delay: .24s; }
+  body.dbm-ready .dbm-hero-eyebrow { animation: dbmFade .7s ease both; }
+  body.dbm-ready .dbm-hero p { animation: dbmFade .8s ease .3s both; }
+  body.dbm-ready .dbm-hero-actions { animation: dbmFade .8s ease .45s both; }
+  @keyframes dbmRise { from { transform: translateY(105%); } to { transform: none; } }
+  @keyframes dbmFade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  @keyframes dbmShimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+  /* Scroll reveal + tab transitions */
+  .dbm-reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+  .dbm-reveal.in { opacity: 1; transform: none; }
+  .dbm-fade-in { animation: dbmFade .45s ease both; }
+
+  /* Gallery: shimmer placeholder, blur-up images */
+  .dbm-card { background: linear-gradient(100deg, #1a1a1a 30%, #2a2a2a 50%, #1a1a1a 70%); background-size: 200% 100%; animation: dbmShimmer 1.4s linear infinite; }
+  .dbm-card.loaded { animation: none; background: #1a1a1a; }
+  .dbm-card img.dbm-media { opacity: 0; filter: blur(10px); transition: opacity .6s ease, filter .6s ease, transform .4s ease; }
+  .dbm-card img.dbm-media.loaded { opacity: 1; filter: none; }
+  .dbm-card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,.35)); opacity: 0; transition: opacity .3s ease; pointer-events: none; z-index: 1; }
+  .dbm-card:hover::before { opacity: 1; }
+  .dbm-card-tag { z-index: 2; transition: transform .3s ease; }
+  .dbm-card:hover .dbm-card-tag { transform: translateY(-3px); }
+  .dbm-skeleton { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 4px; padding: 0 24px 64px; }
+  .dbm-skeleton > div { aspect-ratio: 4/5; background: linear-gradient(100deg, #e4e2db 30%, #efede7 50%, #e4e2db 70%); background-size: 200% 100%; animation: dbmShimmer 1.4s linear infinite; }
+
+  /* Lightbox */
+  .dbm-lightbox.show { animation: dbmLbIn .25s ease both; }
+  @keyframes dbmLbIn { from { opacity: 0; } to { opacity: 1; } }
+  #dbmLightboxImg { transition: opacity .3s ease, transform .3s ease; }
+  #dbmLightboxImg.swap { opacity: 0; transform: scale(.985); }
+
+  /* Section intro labels */
+  .dbm-kicker { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+  .dbm-work-title { padding: 8px 24px 20px; font-size: clamp(26px, 3.6vw, 40px); }
+
+  /* Services */
+  .dbm-services { padding: 56px 24px 48px; }
+  .dbm-services .dbm-section-title { margin-bottom: 24px; }
+  .dbm-services-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; max-width: 1200px; }
+  .dbm-service { border: 1.5px solid var(--ink); padding: 24px; background: #fff; display: flex; flex-direction: column; gap: 10px; cursor: pointer; text-align: left; font-family: 'Inter', sans-serif; color: var(--ink); transition: transform .25s ease, box-shadow .25s ease; }
+  .dbm-service:hover, .dbm-service:focus-visible { transform: translateY(-4px); box-shadow: 6px 6px 0 var(--ink); }
+  .dbm-service-num { font-size: 12px; color: var(--accent); font-weight: 700; letter-spacing: .08em; }
+  .dbm-service h3 { font-family: 'Archivo Black', sans-serif; text-transform: uppercase; font-size: 20px; font-weight: 400; }
+  .dbm-service p { color: var(--muted); font-size: 14.5px; line-height: 1.55; flex: 1; }
+  .dbm-service-link { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+
+  /* About */
+  .dbm-about { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1.3fr); gap: 48px; align-items: center; max-width: 1100px; }
+  .dbm-about.no-photo { grid-template-columns: 1fr; max-width: 760px; }
+  .dbm-about.no-photo .dbm-about-photo { display: none; }
+  .dbm-about-photo img { width: 100%; aspect-ratio: 4/5; object-fit: cover; }
+  .dbm-about .dbm-section-title { margin-bottom: 18px; }
+  .dbm-about-body { font-size: 16px; line-height: 1.7; white-space: pre-line; }
+
+  /* Closing call to action */
+  .dbm-cta { background: var(--accent); color: #fff; padding: 60px 24px; }
+  .dbm-cta h2 { font-size: clamp(26px, 4vw, 42px); margin-bottom: 10px; }
+  .dbm-cta p { opacity: .88; margin-bottom: 26px; max-width: 520px; line-height: 1.55; }
+  .dbm-cta-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .dbm-cta .dbm-btn { background: #fff; color: #0a0a0a; border-color: #fff; }
+  .dbm-cta .dbm-btn.outline { background: transparent; color: #fff; }
+
+  /* Clickable price cards */
+  #dbmPricesSection:not(.editing) .dbm-pkg-card { cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+  #dbmPricesSection:not(.editing) .dbm-pkg-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 10px 24px rgba(0,0,0,.07); }
+  #dbmPricesSection:not(.editing) .dbm-pkg-card::after { content: 'Enquire about this \2192'; margin-top: 16px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+
+  /* Contact extras */
+  .dbm-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .dbm-form-field { display: flex; flex-direction: column; min-width: 0; }
+  .dbm-contact-form select { font-family: 'Inter', sans-serif; font-size: 14px; padding: 10px 12px; border: 1.5px solid #3a3a38; background: #1a1a19; color: var(--paper); }
+  .dbm-contact-form input[type="date"] { color-scheme: dark; }
+  .dbm-contact-form .dbm-req { color: #e8a39e; }
+  .dbm-contact-reply-note { font-size: 13px !important; color: #9a9a94 !important; margin: 8px 0 0 !important; }
+  .dbm-contact-card a.dbm-card-link { color: var(--paper); text-decoration: none; }
+  .dbm-contact .dbm-btn { background: var(--paper); color: var(--ink); border-color: var(--paper); }
+
+  /* Floating WhatsApp */
+  .dbm-wa-float { position: fixed; right: 18px; bottom: 18px; z-index: 60; width: 56px; height: 56px; border-radius: 50%; background: #25D366; color: #fff; display: none; align-items: center; justify-content: center; box-shadow: 0 8px 22px rgba(0,0,0,.25); transition: transform .2s ease; }
+  .dbm-wa-float.show { display: flex; }
+  .dbm-wa-float:hover { transform: scale(1.08); }
+  .dbm-login-trigger { right: auto !important; left: 16px; opacity: .45; }
+  .dbm-login-trigger:hover { opacity: 1; }
+
+  @media (max-width: 720px) {
+    .dbm-services { padding: 40px 20px 32px; }
+    .dbm-work-title { padding: 4px 20px 16px; }
+    .dbm-about { grid-template-columns: 1fr; gap: 24px; }
+    .dbm-cta { padding: 44px 20px; }
+    .dbm-form-row { grid-template-columns: 1fr; }
+    .dbm-skeleton { padding: 0 20px 48px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+    .dbm-hero.has-reel { min-height: 70vh; padding-top: 34vh; }
+  }
+  @media (max-width: 420px) { .dbm-skeleton { grid-template-columns: repeat(2, 1fr); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+    .dbm-reveal { opacity: 1; transform: none; }
+  }
+
 </style>
 
 <!-- Google Analytics — replace G-LH663L66SJ with your real Measurement ID -->
@@ -894,9 +1019,10 @@
 
   <div class="dbm-sprocket"></div>
 
-  <section class="dbm-hero">
+  <section class="dbm-hero" id="dbmHero">
+    <div class="dbm-hero-reel" id="dbmHeroReel" aria-hidden="true"></div>
     <div class="dbm-hero-eyebrow" id="dbmHeroEyebrow">Photography &amp; videography — Nottingham, UK</div>
-    <h1 id="dbmHeroHeading">Moments,<br>shot with intent.</h1>
+    <h1 id="dbmHeroHeading"><span class="dbm-line"><span>Moments,</span></span><span class="dbm-line"><span>shot with intent.</span></span></h1>
     <p id="dbmHeroBody">Event coverage, portraits, and fashion work. I shoot what's real and edit it to feel cinematic — every frame built to be looked at twice.</p>
     <div class="dbm-hero-actions">
       <button class="dbm-btn" onclick="document.getElementById('dbmGallery').scrollIntoView({behavior:'smooth'})">View the work</button>
@@ -907,6 +1033,31 @@
   <div class="dbm-sprocket"></div>
 
   <div id="dbmWorkSection">
+    <section class="dbm-services" id="dbmServices">
+      <div class="dbm-kicker dbm-reveal">What I shoot</div>
+      <h2 class="dbm-section-title dbm-display dbm-reveal">Photography &amp; video in Nottingham</h2>
+      <div class="dbm-services-grid">
+        <button class="dbm-service dbm-reveal" data-go-type="Event">
+          <span class="dbm-service-num">01</span>
+          <h3>Events</h3>
+          <p>Birthdays, launches, parties and celebrations. Full gallery, plus a highlight video on longer bookings.</p>
+          <span class="dbm-service-link">From &pound;180 &rarr;</span>
+        </button>
+        <button class="dbm-service dbm-reveal" data-go-type="Portrait / fashion shoot">
+          <span class="dbm-service-num">02</span>
+          <h3>Portraits &amp; fashion</h3>
+          <p>Personal shoots, editorial looks and lookbooks. Planned around you, edited to feel cinematic.</p>
+          <span class="dbm-service-link">From &pound;90 &rarr;</span>
+        </button>
+        <button class="dbm-service dbm-reveal" data-go-type="Monthly content">
+          <span class="dbm-service-num">03</span>
+          <h3>Brand content</h3>
+          <p>Content days and monthly packages for businesses and creators. Photos and short-form clips ready to post.</p>
+          <span class="dbm-service-link">From &pound;200/month &rarr;</span>
+        </button>
+      </div>
+    </section>
+    <h2 class="dbm-work-title dbm-display dbm-reveal">Recent work</h2>
     <div class="dbm-filterbar">
       <button class="dbm-filter active" data-filter="all">All <span class="dbm-filter-count" id="cnt-all"></span></button>
       <button class="dbm-filter" data-filter="events">Events <span class="dbm-filter-count" id="cnt-events"></span></button>
@@ -922,7 +1073,7 @@
     <div class="dbm-organize-hint" id="dbmOrganizeHint" style="display:none;">Hold and drag any tile to reorder &middot; use ‹ › arrows to move one step &middot; click the image icon to manage photos &middot; red &times; to delete a shoot</div>
 
     <div class="dbm-gallery" id="dbmGallery"></div>
-    <div class="dbm-spinner-wrap" id="dbmLoading">Loading the gallery&hellip;</div>
+    <div class="dbm-skeleton" id="dbmLoading" aria-label="Loading the gallery"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
     <div class="dbm-empty" id="dbmEmpty" style="display:none;">No images in this category yet.</div>
   </div>
 
@@ -942,7 +1093,7 @@
     <div class="dbm-organize-hint" id="dbmOrganizeVideoHint" style="display:none;">Hold and drag any tile to reorder &middot; use ‹ › arrows to move one step &middot; click the video icon to manage videos &middot; red &times; to delete a shoot</div>
 
     <div class="dbm-gallery" id="dbmVideoGallery"></div>
-    <div class="dbm-spinner-wrap" id="dbmVideoLoading">Loading videos&hellip;</div>
+    <div class="dbm-skeleton" id="dbmVideoLoading" aria-label="Loading videos"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
     <div class="dbm-empty" id="dbmVideoEmpty" style="display:none;">No videos in this category yet.</div>
   </div>
 
@@ -1032,6 +1183,7 @@
 
       <div style="text-align:center;margin-top:34px;">
         <button class="dbm-btn" onclick="dbmShowSection('contact')">Book a session</button>
+        <a class="dbm-btn outline" id="dbmDepositBtn" href="#" target="_blank" rel="noopener" style="display:none; text-decoration:none; margin-left:8px;">Pay deposit</a>
       </div>
 
     </div>
@@ -1047,6 +1199,30 @@
     <div id="dbmTestimonialsList" class="dbm-testimonials-grid"></div>
     <button class="dbm-btn outline" id="dbmSeeAllReviewsBtn" style="margin-top:24px;">See all reviews &rarr;</button>
   </section>
+
+  <div id="dbmHomeExtras">
+    <section class="dbm-section dbm-about no-photo" id="dbmAbout">
+      <div class="dbm-about-photo dbm-reveal"><img id="dbmAboutImg" src="" alt="Samuel, photographer and videographer at Dream Big Media" loading="lazy"></div>
+      <div class="dbm-reveal">
+        <div class="dbm-kicker">About</div>
+        <h2 class="dbm-section-title dbm-display" id="dbmAboutHeading">Hi, I'm Samuel</h2>
+        <p class="dbm-about-body" id="dbmAboutBody">I'm a photographer and videographer based in Nottingham, with a degree in VFX &amp; TV Production from Nottingham Trent University.
+
+Most of my time goes into the edit. Colour, pacing, the small details. That's where a shoot turns into something you actually want to share. Whether it's your birthday, a brand launch or a monthly content plan, I keep things relaxed on the day and get your files back fast.</p>
+      </div>
+    </section>
+
+    <section class="dbm-cta" id="dbmCtaBand">
+      <div class="dbm-reveal">
+        <h2 class="dbm-display">Got a date in mind?</h2>
+        <p>Tell me what you're planning and I'll come back with availability and a quote, usually within 24 hours.</p>
+        <div class="dbm-cta-actions">
+          <button class="dbm-btn" onclick="dbmShowSection('contact')">Send an enquiry</button>
+          <a class="dbm-btn outline dbm-wa-link" href="#" target="_blank" rel="noopener" style="display:none; text-decoration:none;">Message on WhatsApp</a>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <section class="dbm-contact" id="dbmContactSection" style="display:none;">
     <div class="dbm-contact-inner">
@@ -1065,18 +1241,75 @@
           <div class="dbm-contact-card-label">Email</div>
           <div class="dbm-contact-card-value"><a href="mailto:db.media0115@gmail.com">db.media0115@gmail.com</a></div>
         </div>
+        <div class="dbm-contact-card" id="dbmContactWhatsappCard" style="display:none;">
+          <div class="dbm-contact-card-label">WhatsApp</div>
+          <div class="dbm-contact-card-value"><a class="dbm-card-link dbm-wa-link" href="#" target="_blank" rel="noopener">Message me &rarr;</a></div>
+        </div>
+        <div class="dbm-contact-card" id="dbmContactBookCard" style="display:none;">
+          <div class="dbm-contact-card-label">Quick call</div>
+          <div class="dbm-contact-card-value"><a class="dbm-card-link" id="dbmBookCallLink" href="#" target="_blank" rel="noopener">Book a 15-min call &rarr;</a></div>
+        </div>
       </div>
 
       <form class="dbm-contact-form" id="dbmContactForm">
         <h3 class="dbm-contact-form-title">Or send a booking enquiry directly</h3>
-        <label for="dbmContactName">Name</label>
-        <input type="text" id="dbmContactName" required>
-        <label for="dbmContactEmail">Email</label>
-        <input type="email" id="dbmContactEmail" required>
-        <label for="dbmContactMessage">What are you booking, and when?</label>
-        <textarea id="dbmContactMessage" rows="5" required placeholder="e.g. 21st birthday shoot, mid-August, Nottingham city centre"></textarea>
+        <div class="dbm-form-row">
+          <div class="dbm-form-field">
+            <label for="dbmContactName">Name <span class="dbm-req">*</span></label>
+            <input type="text" id="dbmContactName" autocomplete="name" required>
+          </div>
+          <div class="dbm-form-field">
+            <label for="dbmContactEmail">Email <span class="dbm-req">*</span></label>
+            <input type="email" id="dbmContactEmail" autocomplete="email" required>
+          </div>
+        </div>
+        <div class="dbm-form-row">
+          <div class="dbm-form-field">
+            <label for="dbmContactType">What's the shoot? <span class="dbm-req">*</span></label>
+            <select id="dbmContactType" required>
+              <option value="">Choose one</option>
+              <option>Event</option>
+              <option>Portrait / fashion shoot</option>
+              <option>Content day (photo + video)</option>
+              <option>Monthly content</option>
+              <option>Something else</option>
+            </select>
+          </div>
+          <div class="dbm-form-field">
+            <label for="dbmContactDate">Date</label>
+            <input type="date" id="dbmContactDate">
+          </div>
+        </div>
+        <div class="dbm-form-row">
+          <div class="dbm-form-field">
+            <label for="dbmContactLocation">Location</label>
+            <input type="text" id="dbmContactLocation" placeholder="e.g. Nottingham city centre">
+          </div>
+          <div class="dbm-form-field">
+            <label for="dbmContactBudget">Budget</label>
+            <select id="dbmContactBudget">
+              <option value="">Not sure yet</option>
+              <option>Under &pound;150</option>
+              <option>&pound;150&ndash;&pound;350</option>
+              <option>&pound;350&ndash;&pound;650</option>
+              <option>&pound;650+</option>
+            </select>
+          </div>
+        </div>
+        <label for="dbmContactMessage">Tell me a bit more <span class="dbm-req">*</span></label>
+        <textarea id="dbmContactMessage" rows="4" required placeholder="e.g. 21st birthday, about 40 guests, would love a short highlight video"></textarea>
+        <label for="dbmContactSource">How did you find me?</label>
+        <select id="dbmContactSource">
+          <option value="">Choose one</option>
+          <option>Instagram</option>
+          <option>TikTok</option>
+          <option>Google</option>
+          <option>Friend or referral</option>
+          <option>Other</option>
+        </select>
         <button type="submit" class="dbm-btn" id="dbmContactSubmit">Send enquiry</button>
         <div class="dbm-contact-form-status" id="dbmContactFormStatus"></div>
+        <p class="dbm-contact-reply-note" id="dbmReplyNote">I usually reply within 24 hours.</p>
       </form>
     </div>
   </section>
@@ -1260,6 +1493,35 @@
       </div>
 
       <div class="dbm-settings-group">
+        <h4>Showreel (home page background)</h4>
+        <label for="dbmSetShowreel">Showreel link <span style="opacity:0.6; font-weight:400;">(YouTube, Vimeo or .mp4 link; leave blank for no video)</span></label>
+        <input type="text" id="dbmSetShowreel" placeholder="e.g. https://youtu.be/AbC12345xyz">
+        <p style="font-size:12px; color:var(--muted); margin-top:6px;">Plays muted on a loop behind your headline. Keep it 20&ndash;40 seconds with no important text on screen.</p>
+      </div>
+
+      <div class="dbm-settings-group">
+        <h4>About section</h4>
+        <label for="dbmSetAboutHeading">Heading</label>
+        <input type="text" id="dbmSetAboutHeading">
+        <label for="dbmSetAboutBody">Text <span style="opacity:0.6; font-weight:400;">(blank lines start a new paragraph)</span></label>
+        <textarea id="dbmSetAboutBody" rows="6"></textarea>
+        <label for="dbmSetAboutImage">Photo of you <span style="opacity:0.6; font-weight:400;">(image link; leave blank to hide)</span></label>
+        <input type="text" id="dbmSetAboutImage" placeholder="https://...">
+      </div>
+
+      <div class="dbm-settings-group">
+        <h4>Booking &amp; contact</h4>
+        <label for="dbmSetWhatsapp">WhatsApp number <span style="opacity:0.6; font-weight:400;">(e.g. 07123 456789; blank hides the button)</span></label>
+        <input type="text" id="dbmSetWhatsapp">
+        <label for="dbmSetBookingUrl">Booking call link <span style="opacity:0.6; font-weight:400;">(Calendly / Cal.com)</span></label>
+        <input type="text" id="dbmSetBookingUrl" placeholder="https://calendly.com/...">
+        <label for="dbmSetDepositUrl">Deposit payment link <span style="opacity:0.6; font-weight:400;">(Stripe / PayPal)</span></label>
+        <input type="text" id="dbmSetDepositUrl" placeholder="https://buy.stripe.com/...">
+        <label for="dbmSetReplyNote">Reply time note <span style="opacity:0.6; font-weight:400;">(under the enquiry form)</span></label>
+        <input type="text" id="dbmSetReplyNote">
+      </div>
+
+      <div class="dbm-settings-group">
         <h4>Logo &amp; title size / position</h4>
         <p style="font-size:12px; color:var(--muted); margin-top:0;">Drag the logo or title directly in the header to reposition them. Use the sliders below to resize.</p>
         <label for="dbmSetLogoSize">Logo size</label>
@@ -1303,6 +1565,10 @@
       <div class="dbm-login-status" id="dbmLoginStatus"></div>
     </div>
   </div>
+
+  <a class="dbm-wa-float dbm-wa-link" id="dbmWaFloat" href="#" target="_blank" rel="noopener" aria-label="Message on WhatsApp">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.64.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.6.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.5h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.08 1.75-.72 2-1.41.25-.69.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35zM12.04 21.5h-.01a9.4 9.4 0 0 1-4.8-1.32l-.34-.2-3.57.94.95-3.48-.22-.36a9.43 9.43 0 1 1 7.99 4.42zm8.02-17.45A11.27 11.27 0 0 0 12.04.75C5.8.75.73 5.82.73 12.06c0 1.99.52 3.94 1.51 5.66L.64 23.25l5.66-1.48a11.3 11.3 0 0 0 5.74 1.46h.01c6.24 0 11.31-5.07 11.31-11.31 0-3.02-1.18-5.86-3.3-8z"/></svg>
+  </a>
 
   <button class="dbm-login-trigger" id="dbmLoginTrigger" aria-label="Admin login" title="Admin login">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
