@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dreambigmedia.co.uk/sitemap.xml
+Sitemap: https://www.dreambigmedia.co.uk/sitemap.xml
