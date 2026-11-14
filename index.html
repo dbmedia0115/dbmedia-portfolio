@@ -884,8 +884,26 @@
   @keyframes dbmFloat { 0%,100% { translate: 0 0; } 50% { translate: 0 -8px; } }
   .dbm-hero > :not(.dbm-hero-reel):not(.dbm-deco-row) { position: relative; z-index: 1; }
   .dbm-hero.has-reel .dbm-deco-row { display: none; }
-  @media (max-width: 1099px) { .dbm-deco-row { display: none; } }
   @media (min-width: 1100px) and (max-width: 1350px) { .dbm-deco { scale: .78; } }
+  /* Laptops / tablets: smaller, nudged clear of the text */
+  @media (min-width: 700px) and (max-width: 1099px) {
+    .dbm-deco { scale: .62; }
+    .dk-rec { top: -40px !important; left: calc(100vw - 290px) !important; }
+    .dk-camera { top: 190px !important; left: calc(100vw - 330px) !important; }
+    .dk-wifi { top: -45px !important; left: calc(100vw - 170px) !important; }
+    .dk-videocam { top: 40px !important; left: calc(100vw - 250px) !important; }
+    .dk-controls { top: 10px !important; left: calc(100vw - 340px) !important; }
+    .dk-flash { left: calc(100vw - 300px) !important; }
+    .dk-clapper { display: none; }
+  }
+  /* Phones: just a few small accents in safe corners */
+  @media (max-width: 699px) {
+    .dbm-deco { scale: .42; opacity: .85; }
+    .dk-camera, .dk-wifi, .dk-clapper, .dk-videocam { display: none; }
+    .dk-rec { top: -50px !important; left: calc(100vw - 250px) !important; }
+    .dk-controls { top: -24px !important; left: calc(100vw - 300px) !important; }
+    .dk-flash { top: 60px !important; left: calc(100vw - 255px) !important; scale: .32; }
+  }
   @media (prefers-reduced-motion: reduce) { .dbm-deco { animation: none; } }
 
   /* Hero intro: heading lines rise in, rest fades up */
@@ -1040,7 +1058,7 @@
 
   <section class="dbm-hero" id="dbmHero">
     <div class="dbm-hero-reel" id="dbmHeroReel" aria-hidden="true"></div>
-    <div class="dbm-deco-row" aria-hidden="true"><img class="dbm-deco d2" src="/assets/deco/rec.webp" alt="" width="210" style="width:210px;left:calc(100vw - 330px);top:-30px;rotate:4deg;" loading="lazy" decoding="async"><img class="dbm-deco " src="/assets/deco/camera.webp" alt="" width="220" style="width:220px;left:calc(100vw - 470px);top:90px;rotate:-10deg;" loading="lazy" decoding="async"></div>
+    <div class="dbm-deco-row" aria-hidden="true"><img class="dk-rec dbm-deco d2" src="/assets/deco/rec.webp" alt="" width="210" style="width:210px;left:calc(100vw - 330px);top:-30px;rotate:4deg;" loading="lazy" decoding="async"><img class="dk-camera dbm-deco " src="/assets/deco/camera.webp" alt="" width="220" style="width:220px;left:calc(100vw - 470px);top:90px;rotate:-10deg;" loading="lazy" decoding="async"></div>
     <div class="dbm-hero-eyebrow" id="dbmHeroEyebrow">Photography &amp; videography — Nottingham, UK</div>
     <h1 id="dbmHeroHeading"><span class="dbm-line"><span>Moments,</span></span><span class="dbm-line"><span>shot with intent.</span></span></h1>
     <p id="dbmHeroBody">Event coverage, portraits, and fashion work. I shoot what's real and edit it to feel cinematic — every frame built to be looked at twice.</p>
@@ -1054,7 +1072,7 @@
 
   <div id="dbmWorkSection">
     <section class="dbm-services" id="dbmServices">
-      <div class="dbm-deco-row" aria-hidden="true"><img class="dbm-deco d3" src="/assets/deco/wifi.webp" alt="" width="120" style="width:120px;left:calc(100vw - 230px);top:-20px;rotate:12deg;" loading="lazy" decoding="async"></div>
+      <div class="dbm-deco-row" aria-hidden="true"><img class="dk-wifi dbm-deco d3" src="/assets/deco/wifi.webp" alt="" width="120" style="width:120px;left:calc(100vw - 230px);top:-20px;rotate:12deg;" loading="lazy" decoding="async"></div>
       <div class="dbm-kicker dbm-reveal">What I shoot</div>
       <h2 class="dbm-section-title dbm-display dbm-reveal">Photography &amp; video in Nottingham</h2>
       <div class="dbm-services-grid">
@@ -1079,7 +1097,7 @@
       </div>
       <p class="dbm-service-more dbm-reveal">More about: <a href="/events/">Events</a> · <a href="/portraits-fashion/">Portraits &amp; fashion</a> · <a href="/brand-content/">Brand content</a></p>
     </section>
-    <div class="dbm-deco-row" aria-hidden="true"><img class="dbm-deco d3" src="/assets/deco/controls.webp" alt="" width="300" style="width:300px;left:calc(100vw - 420px);top:28px;rotate:-3deg;" loading="lazy" decoding="async"></div>
+    <div class="dbm-deco-row" aria-hidden="true"><img class="dk-controls dbm-deco d3" src="/assets/deco/controls.webp" alt="" width="300" style="width:300px;left:calc(100vw - 420px);top:28px;rotate:-3deg;" loading="lazy" decoding="async"></div>
     <h2 class="dbm-work-title dbm-display dbm-reveal">Recent work</h2>
     <div class="dbm-filterbar">
       <button class="dbm-filter active" data-filter="all">All <span class="dbm-filter-count" id="cnt-all"></span></button>
@@ -1218,14 +1236,14 @@
   </section>
 
   <section class="dbm-section dbm-testimonials dbm-testimonials-teaser" id="dbmTestimonialsTeaser">
-    <div class="dbm-deco-row" aria-hidden="true"><img class="dbm-deco d2" src="/assets/deco/clapper.webp" alt="" width="170" style="width:170px;left:calc(50% - 47.5vw);top:40px;rotate:-9deg;" loading="lazy" decoding="async"></div>
+    <div class="dbm-deco-row" aria-hidden="true"><img class="dk-clapper dbm-deco d2" src="/assets/deco/clapper.webp" alt="" width="170" style="width:170px;left:calc(50% - 47.5vw);top:40px;rotate:-9deg;" loading="lazy" decoding="async"></div>
     <h2 class="dbm-section-title dbm-display">What clients say</h2>
     <div id="dbmTestimonialsList" class="dbm-testimonials-grid"></div>
     <button class="dbm-btn outline" id="dbmSeeAllReviewsBtn" style="margin-top:24px;">See all reviews &rarr;</button>
   </section>
 
   <div id="dbmHomeExtras">
-    <div class="dbm-deco-row" aria-hidden="true"><img class="dbm-deco d3" src="/assets/deco/videocam.webp" alt="" width="190" style="width:190px;left:calc(100vw - 360px);top:70px;rotate:8deg;" loading="lazy" decoding="async"></div>
+    <div class="dbm-deco-row" aria-hidden="true"><img class="dk-videocam dbm-deco d3" src="/assets/deco/videocam.webp" alt="" width="190" style="width:190px;left:calc(100vw - 360px);top:70px;rotate:8deg;" loading="lazy" decoding="async"></div>
     <section class="dbm-section dbm-about no-photo" id="dbmAbout">
       <div class="dbm-about-photo dbm-reveal"><img id="dbmAboutImg" src="" alt="Samuel, photographer and videographer at Dream Big Media" loading="lazy"></div>
       <div class="dbm-reveal">
@@ -1238,7 +1256,7 @@ Most of my time goes into the edit. Colour, pacing, the small details. That's wh
     </section>
 
     <section class="dbm-cta" id="dbmCtaBand">
-      <div class="dbm-deco-row" aria-hidden="true"><img class="dbm-deco d2" src="/assets/deco/flash.webp" alt="" width="260" style="width:260px;left:calc(100vw - 420px);top:-20px;rotate:7deg;filter:drop-shadow(0 8px 14px rgba(0,0,0,.25));" loading="lazy" decoding="async"></div>
+      <div class="dbm-deco-row" aria-hidden="true"><img class="dk-flash dbm-deco d2" src="/assets/deco/flash.webp" alt="" width="260" style="width:260px;left:calc(100vw - 420px);top:-20px;rotate:7deg;filter:drop-shadow(0 8px 14px rgba(0,0,0,.25));" loading="lazy" decoding="async"></div>
       <div class="dbm-reveal">
         <h2 class="dbm-display">Got a date in mind?</h2>
         <p>Tell me what you're planning and I'll come back with availability and a quote, usually within 24 hours.</p>
