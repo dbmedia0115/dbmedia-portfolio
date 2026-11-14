@@ -1,0 +1,164 @@
+# Weekly health check for dreambigmedia.co.uk
+# Runs every Monday morning on GitHub (no computer needed).
+# Passes quietly. If anything is broken, the run FAILS and GitHub emails you
+# a link to a plain-English list of what's wrong and how to fix it.
+#
+# Put this file in your repo at:  .github/workflows/site-health-check.yml
+
+name: Site health check
+
+on:
+  schedule:
+    - cron: "40 7 * * 1"   # Mondays 07:40 UTC (07:40 in winter, 08:40 in summer, UK time)
+  workflow_dispatch:        # lets you run it by hand from the Actions tab
+
+env:
+  SITE: https://dreambigmedia.co.uk
+  # Text the homepage <title> must contain (not case-sensitive). Change if your title differs.
+  TITLE_MUST_CONTAIN: Dream Big
+  # Extra pages to always check, space-separated (menu links are found automatically too).
+  EXTRA_PAGES: ""
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check the live site
+        shell: python
+        run: |
+          import os, re, ssl, socket, time, urllib.request, urllib.error
+          from urllib.parse import urljoin, urlparse
+          from datetime import datetime, timezone
+
+          SITE = os.environ["SITE"].rstrip("/")
+          HOST = urlparse(SITE).hostname
+          WANT_TITLE = os.environ["TITLE_MUST_CONTAIN"].strip().lower()
+          issues = []   # (what's broken, likely fix)
+          passed = []
+
+          def fetch(url, tries=2):
+              """Return (status, final_url, body_text, error). Retries once so a blip doesn't alert."""
+              last = None
+              for i in range(tries):
+                  try:
+                      req = urllib.request.Request(url, headers={"User-Agent": "DBMedia-HealthCheck/1.0"})
+                      with urllib.request.urlopen(req, timeout=20) as r:
+                          return r.status, r.geturl(), r.read().decode("utf-8", "replace"), None
+                  except urllib.error.HTTPError as e:
+                      body = e.read().decode("utf-8", "replace") if e.fp else ""
+                      return e.code, url, body, None
+                  except Exception as e:
+                      last = e
+                      time.sleep(5)
+              return None, url, "", last
+
+          # 5. Domain + SSL certificate
+          try:
+              ctx = ssl.create_default_context()
+              with socket.create_connection((HOST, 443), timeout=15) as s:
+                  with ctx.wrap_socket(s, server_hostname=HOST) as tls:
+                      cert = tls.getpeercert()
+              expires = datetime.strptime(cert["notAfter"], "%b %d %H:%M:%S %Y %Z").replace(tzinfo=timezone.utc)
+              days = (expires - datetime.now(timezone.utc)).days
+              if days < 14:
+                  issues.append((f"SSL certificate expires in {days} days ({expires:%d %b %Y}).",
+                                 "Your host normally renews it automatically. Check the domain/HTTPS settings at your host (Netlify / GitHub Pages / Cloudflare)."))
+              else:
+                  passed.append(f"Domain resolves and SSL certificate is valid (expires {expires:%d %b %Y}).")
+          except socket.gaierror:
+              issues.append((f"The domain {HOST} doesn't resolve (DNS failure).",
+                             "Check the domain hasn't expired at your registrar, and that its DNS records still point at your host."))
+          except ssl.SSLError as e:
+              issues.append((f"SSL certificate problem: {e}. Visitors will see a security warning.",
+                             "In your host's domain settings, re-issue/renew the HTTPS certificate."))
+          except Exception as e:
+              issues.append((f"Couldn't make a secure connection to {HOST}: {e}.",
+                             "The site may be down. Check your host's status page and dashboard."))
+
+          # 1. Homepage over HTTPS with the right title
+          status, final, home, err = fetch(SITE + "/")
+          if err or status != 200:
+              issues.append((f"Homepage didn't load (status {status or 'no response'}{', ' + str(err) if err else ''}).",
+                             "Check your host dashboard for a failed deploy, and that the latest files in GitHub are correct."))
+              home = ""
+          else:
+              if not final.startswith("https://"):
+                  issues.append(("Homepage isn't being served over HTTPS.", "Turn on 'Enforce HTTPS' in your host's settings."))
+              m = re.search(r"<title[^>]*>(.*?)</title>", home, re.I | re.S)
+              title = (m.group(1).strip() if m else "")
+              if WANT_TITLE and WANT_TITLE not in title.lower():
+                  issues.append((f"Homepage title is '{title or '(missing)'}', expected it to contain '{os.environ['TITLE_MUST_CONTAIN']}'.",
+                                 "Fix the <title> line in index.html, or update TITLE_MUST_CONTAIN in this workflow if you changed it on purpose."))
+              else:
+                  passed.append(f"Homepage loads over HTTPS. Title: '{title}'.")
+
+          # http:// should redirect to https://
+          s2, f2, _, e2 = fetch("http://" + HOST + "/")
+          if s2 and not f2.startswith("https://"):
+              issues.append(("http:// version doesn't redirect to the secure https:// site.", "Turn on 'Enforce HTTPS' in your host's settings."))
+
+          # 2. Main pages: menu links on the same site + extras
+          pages = set(p for p in os.environ.get("EXTRA_PAGES", "").split() if p)
+          for href in re.findall(r'<a[^>]+href=["\']([^"\'#]+)["\']', home, re.I):
+              u = urljoin(SITE + "/", href)
+              p = urlparse(u)
+              if p.hostname == HOST and not re.search(r"\.(jpe?g|png|gif|webp|mp4|pdf|zip|css|js)$", p.path, re.I):
+                  pages.add(p.path or "/")
+          pages.discard("/")
+          for path in sorted(pages):
+              s, _, body, e = fetch(urljoin(SITE + "/", path))
+              if e or s != 200:
+                  issues.append((f"Page {path} is broken (status {s or 'no response'}).",
+                                 "The page may have been renamed or deleted. Fix or remove its menu link, or restore the file in GitHub."))
+              elif len(re.sub(r"<[^>]+>", "", body).strip()) < 50:
+                  issues.append((f"Page {path} loads but is almost empty.", "Check the page's file in GitHub wasn't overwritten."))
+              else:
+                  passed.append(f"Page {path} loads.")
+          if not pages:
+              passed.append("No separate menu pages found (single-page site), so only the homepage was checked.")
+
+          # 3. A made-up URL should give a proper 'not found' page
+          s, _, body, e = fetch(SITE + "/this-page-should-not-exist-health-check-12345")
+          if e or s is None:
+              issues.append(("A made-up URL got no response at all.", "The site may be partly down. Check your host dashboard."))
+          elif s >= 500:
+              issues.append((f"A made-up URL gives a server error ({s}) instead of 'page not found'.",
+                             "Add a 404.html page to the repo, or set a custom 404 page in your host's settings."))
+          elif s == 404:
+              passed.append("Made-up URLs show a proper 'page not found' (404).")
+          else:
+              passed.append(f"Made-up URL returned {s} (not an error; likely redirects to the homepage, which is fine for a single-page site).")
+
+          # 4. Forms present (also looks in app.js, since your site builds parts of the page with JavaScript)
+          js = ""
+          for src in re.findall(r'<script[^>]+src=["\']([^"\']+)["\']', home, re.I):
+              u = urljoin(SITE + "/", src)
+              if urlparse(u).hostname == HOST:
+                  s, _, b, _ = fetch(u)
+                  if s == 200:
+                      js += b
+          if home:
+              if re.search(r"<form\b|createElement\(\s*['\"]form|<input\b|<textarea\b", home + js, re.I):
+                  passed.append("A form (contact/booking) is present.")
+              else:
+                  issues.append(("No contact/sign-up form found on the site.",
+                                 "Check the contact section in index.html / app.js wasn't removed in a recent change."))
+
+          # Report
+          lines = ["# " + ("ALL GOOD" if not issues else "ISSUES FOUND") + f" — {SITE}", ""]
+          if issues:
+              lines.append("## What's broken and how to fix it")
+              for i, (what, fix) in enumerate(issues, 1):
+                  lines.append(f"{i}. **{what}**  \n   Likely fix: {fix}")
+              lines.append("")
+          lines.append("## Passed")
+          lines += [f"- {p}" for p in passed]
+          report = "\n".join(lines)
+          print(report)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(report + "\n")
+          for what, fix in issues:
+              print(f"::error title=Site issue::{what} Likely fix: {fix}")
+          if issues:
+              raise SystemExit(1)
