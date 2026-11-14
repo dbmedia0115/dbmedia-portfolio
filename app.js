@@ -394,6 +394,7 @@
             var baseOrder = shoot.items.reduce(function (m, it) { return Math.max(m, it.display_order || 0); }, -1);
             for (var i = 0; i < files.length; i++) {
               var file = files[i];
+              if (cfg.mediaType !== 'video') file = await dbmOptimizeImage(file);
               var ext = (/\.([a-zA-Z0-9]+)$/.exec(file.name) || ['', cfg.mediaType === 'video' ? 'mp4' : 'jpg'])[1];
               var path = shoot.id + '/' + Date.now() + '-' + i + '.' + ext;
               var { error: uploadErr } = await supabase.storage.from(cfg.bucket).upload(path, file);
@@ -658,6 +659,7 @@
           var files = Array.from(fileInput.files);
           for (var i = 0; i < files.length; i++) {
             var file = files[i];
+            if (cfg.mediaType !== 'video') file = await dbmOptimizeImage(file);
             var path = shootId + '/' + Date.now() + '-' + i + '.' + fileExt(file.name, cfg.mediaType === 'video' ? 'mp4' : 'jpg');
             var { error: uploadErr } = await supabase.storage.from(cfg.bucket).upload(path, file);
             if (uploadErr) throw uploadErr;
@@ -1485,13 +1487,34 @@
     startEnquiry(key ? PKG_TYPES[key] : '', "I'm interested in the " + headText + ' ' + pkgName.trim() + ' package (' + pkgPrice.trim() + ').\n\n');
   });
 
+  // ---------- Image optimiser ----------
+  // Resizes photos to max 2400px on the long edge and saves as WebP (~60-80% smaller).
+  // Falls back to the original file if the browser can't convert it.
+  async function dbmOptimizeImage(file) {
+    try {
+      if (!/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type)) return file;
+      var bmp = await createImageBitmap(file);
+      var max = 2400, s = Math.min(1, max / Math.max(bmp.width, bmp.height));
+      var c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      var blob = await new Promise(function (r) { c.toBlob(r, 'image/webp', 0.85); });
+      if (!blob || blob.type !== 'image/webp' || blob.size >= file.size) return file;
+      return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.webp', { type: 'image/webp' });
+    } catch (e) { return file; }
+  }
+
   // ---------- Boot ----------
   (async function init() {
-    var readyFallback = setTimeout(function () { document.body.classList.add('dbm-ready'); }, 1500);
+    var readyFallback = setTimeout(function () { document.body.classList.add('dbm-ready'); }, 500);
     await checkSession();
     await loadSiteSettings();
     clearTimeout(readyFallback);
     document.body.classList.add('dbm-ready');
+    try {
+      var enq = new URLSearchParams(location.search).get('enquire');
+      if (enq !== null) startEnquiry(enq);
+    } catch (e) {}
     await loadTestimonials();
     await photoGallery.loadShoots();
     await videoGallery.loadShoots();
