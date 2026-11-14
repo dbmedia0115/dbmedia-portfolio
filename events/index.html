@@ -39,5 +39,6 @@ h1{font-family:'Archivo Black',sans-serif;font-size:clamp(30px,6vw,52px);line-he
 <div class="other">Also: <a href="/portraits-fashion/">Portrait and fashion shoots</a> <a href="/brand-content/">Brand content</a></div>
 </main>
 <footer><div class="wrap">Dream Big Media — Nottingham, UK · <a href="/">dreambigmedia.co.uk</a></div></footer>
+<script>document.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){try{gtag('event',a.href.indexOf('enquire=')>-1?'enquiry_click':'internal_click',{service_page:'events',link_text:a.textContent.trim()});}catch(e){}});});</script>
 </body>
 </html>

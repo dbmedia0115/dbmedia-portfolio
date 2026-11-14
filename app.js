@@ -557,6 +557,7 @@
         document.querySelectorAll('[' + cfg.els.filterAttr + ']').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         state.currentFilter = btn.getAttribute(cfg.els.filterAttr);
+        dbmTrack('gallery_filter', { filter: state.currentFilter, media_type: cfg.mediaType });
         renderGallery();
       });
     });
@@ -749,6 +750,7 @@
     }
   }
   function openLightbox(shoot, item, mediaType) {
+    dbmTrack('view_shoot', { shoot_name: (shoot.name && shoot.name.trim()) ? shoot.name : (shoot.category || 'untitled'), shoot_category: shoot.category || '', media_type: mediaType });
     lightboxSet = shoot.items;
     lightboxMediaType = mediaType;
     lightboxIndex = lightboxSet.findIndex(function (p) { return p.id === item.id; });
@@ -1347,6 +1349,16 @@
     renderTestimonialsEditList();
   });
 
+  // ---------- Analytics helper ----------
+  // Sends a GA4 event. Skipped while you're logged in as admin so your own visits don't skew the data.
+  function dbmTrack(name, params) {
+    try { if (typeof gtag === 'function' && !isAdmin) gtag('event', name, params || {}); } catch (e) {}
+  }
+  var dbmFormStarted = false;
+  el('dbmContactForm').addEventListener('focusin', function () {
+    if (!dbmFormStarted) { dbmFormStarted = true; dbmTrack('form_start', { form_name: 'enquiry' }); }
+  });
+
   // ---------- Contact form ----------
   el('dbmContactForm').addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -1363,6 +1375,7 @@
 
     if (!name || !email || !message || !shootType) {
       status.textContent = 'Please fill in the fields marked *.';
+      dbmTrack('form_error', { form_name: 'enquiry', reason: 'missing_required' });
       return;
     }
 
@@ -1390,11 +1403,12 @@
       var result = await res.json();
       if (!result.success) throw new Error(result.message || 'Send failed');
       status.textContent = 'Thanks ' + name.split(' ')[0] + ", your enquiry's in. I'll be in touch soon.";
-      if (typeof gtag === 'function') gtag('event', 'generate_lead', { shoot_type: shootType });
+      dbmTrack('generate_lead', { shoot_type: shootType, budget: budget || 'not_sure', found_via: source || 'not_given', has_date: shootDate ? 'yes' : 'no', currency: 'GBP' });
       el('dbmContactForm').reset();
     } catch (err) {
       console.error(err);
       status.textContent = 'Something went wrong sending that. Please try emailing directly instead.';
+      dbmTrack('form_error', { form_name: 'enquiry', reason: 'send_failed' });
     } finally {
       submitBtn.disabled = false;
     }
@@ -1402,6 +1416,7 @@
 
   // ---------- Sections (Work / Videos / FAQ / Contact) ----------
   function dbmShowSection(name) {
+    dbmTrack('section_view', { section_name: name });
     el('dbmWorkSection').style.display = name === 'work' ? 'block' : 'none';
     el('dbmVideosSection').style.display = name === 'videos' ? 'block' : 'none';
     el('dbmReviewsSection').style.display = name === 'reviews' ? 'block' : 'none';
@@ -1460,6 +1475,7 @@
   window.addEventListener('scroll', function () { header.classList.toggle('scrolled', window.scrollY > 40); }, { passive: true });
 
   function startEnquiry(type, note) {
+    dbmTrack('enquiry_start', { shoot_type: type || 'none', from_package: note ? 'yes' : 'no' });
     dbmShowSection('contact');
     if (type) el('dbmContactType').value = type;
     if (note && !el('dbmContactMessage').value.trim()) el('dbmContactMessage').value = note;
