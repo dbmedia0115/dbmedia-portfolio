@@ -1056,6 +1056,7 @@
     }
   });
 
+  window.addEventListener('resize', function () { applyLogoTitleTransform(); });
   function applyLogoTitleTransform() {
     var logoScale = parseFloat(siteSettings.logo_size) || 1;
     var logoX = parseFloat(siteSettings.logo_pos_x) || 0;
@@ -1064,8 +1065,18 @@
     var titleX = parseFloat(siteSettings.title_pos_x) || 0;
     var titleY = parseFloat(siteSettings.title_pos_y) || 0;
 
-    el('dbmLogoMark').style.transform = 'translate(' + logoX + 'px, ' + logoY + 'px) scale(' + logoScale + ')';
-    el('dbmLogoText').style.transform = 'translate(' + titleX + 'px, ' + titleY + 'px) scale(' + titleScale + ')';
+    // Real size (not a visual-only scale) so the header grows with the logo and its bottom line stays below it.
+    var mark = el('dbmLogoMark'), text = el('dbmLogoText');
+    var small = window.innerWidth < 700;
+    var base = small ? 34 : 40;
+    var markPx = Math.round(base * (small ? Math.min(logoScale, 1.6) : logoScale));
+    // Older saved title offsets were set to clear the visually-scaled logo; the logo now takes real space, so remove that.
+    titleX = titleX - Math.max(0, Math.round(40 * logoScale) - 40);
+    if (small) { titleScale = Math.min(titleScale, 1.3); titleX = Math.min(titleX, 8); }
+    mark.style.width = markPx + 'px'; mark.style.height = markPx + 'px';
+    mark.style.transform = 'translate(' + logoX + 'px, ' + logoY + 'px)';
+    text.style.zoom = titleScale;
+    text.style.transform = 'translate(' + titleX + 'px, ' + titleY + 'px)';
   }
 
   // ---------- Draggable logo & title (admin only) ----------

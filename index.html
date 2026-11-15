@@ -896,13 +896,15 @@
     .dk-flash { left: calc(100vw - 300px) !important; }
     .dk-clapper { display: none; }
   }
-  /* Phones: just a few small accents in safe corners */
+  /* Phones: small accents pinned to the right edge, clear of the text */
   @media (max-width: 699px) {
-    .dbm-deco { scale: .42; opacity: .85; }
-    .dk-camera, .dk-wifi, .dk-clapper, .dk-videocam { display: none; }
-    .dk-rec { top: -50px !important; left: calc(100vw - 250px) !important; }
-    .dk-controls { top: -24px !important; left: calc(100vw - 300px) !important; }
-    .dk-flash { top: 60px !important; left: calc(100vw - 255px) !important; scale: .32; }
+    .dbm-deco { transform-origin: top right; left: auto !important; right: 0; opacity: .9; }
+    .dk-camera, .dk-clapper { display: none; }
+    .dk-rec { top: -32px !important; scale: .4; }
+    .dk-wifi { top: -6px !important; scale: .3; }
+    .dk-controls { top: 10px !important; scale: .42; }
+    .dk-videocam { top: 40px !important; right: 20px; scale: .22; }
+    .dk-flash { top: 150px !important; scale: .34; }
   }
   @media (prefers-reduced-motion: reduce) { .dbm-deco { animation: none; } }
 
