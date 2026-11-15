@@ -1458,6 +1458,16 @@ Most of my time goes into the edit. Colour, pacing, the small details. That's wh
         <input type="text" id="dbmVideoShootNameInput" placeholder="e.g. Sarah's 21st Birthday" style="flex:1; padding:8px 10px; border:1.5px solid var(--ink); font-family:'Inter',sans-serif; font-size:13px;">
         <button class="dbm-btn" id="dbmSaveVideoShootName" style="padding:8px 16px;">Save</button>
       </div>
+      <label for="dbmVideoShootSectionSelect" style="font-size:11px; text-transform:uppercase; letter-spacing:0.03em; font-weight:700; display:block; margin-bottom:4px;">Section <span style="opacity:0.6; font-weight:400; text-transform:none;">(move this shoot to another section)</span></label>
+      <div style="display:flex; gap:8px; margin-bottom:14px;">
+        <select id="dbmVideoShootSectionSelect" style="flex:1; padding:8px 10px; border:1.5px solid var(--ink); font-family:'Inter',sans-serif; font-size:13px; background:#fff;">
+          <option value="events">Events</option>
+          <option value="portraits">Portraits</option>
+          <option value="fashion">Fashion</option>
+          <option value="studio">Studio</option>
+        </select>
+        <button class="dbm-btn" id="dbmVideoShootSaveSection" style="padding:8px 16px;">Move</button>
+      </div>
       <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">Click a video to make it the cover, or click the &times; to delete it.</p>
       <div class="dbm-cover-grid" id="dbmVideoCoverGrid"></div>
       <div class="dbm-modal-actions" style="margin-bottom:10px;">
@@ -1475,6 +1485,16 @@ Most of my time goes into the edit. Colour, pacing, the small details. That's wh
       <div style="display:flex; gap:8px; margin-bottom:14px;">
         <input type="text" id="dbmShootNameInput" placeholder="e.g. Sarah's 21st Birthday" style="flex:1; padding:8px 10px; border:1.5px solid var(--ink); font-family:'Inter',sans-serif; font-size:13px;">
         <button class="dbm-btn" id="dbmSaveShootName" style="padding:8px 16px;">Save</button>
+      </div>
+      <label for="dbmShootSectionSelect" style="font-size:11px; text-transform:uppercase; letter-spacing:0.03em; font-weight:700; display:block; margin-bottom:4px;">Section <span style="opacity:0.6; font-weight:400; text-transform:none;">(move this shoot to another section)</span></label>
+      <div style="display:flex; gap:8px; margin-bottom:14px;">
+        <select id="dbmShootSectionSelect" style="flex:1; padding:8px 10px; border:1.5px solid var(--ink); font-family:'Inter',sans-serif; font-size:13px; background:#fff;">
+          <option value="events">Events</option>
+          <option value="portraits">Portraits</option>
+          <option value="fashion">Fashion</option>
+          <option value="studio">Studio</option>
+        </select>
+        <button class="dbm-btn" id="dbmShootSaveSection" style="padding:8px 16px;">Move</button>
       </div>
       <p style="font-size:13px; color:var(--muted); margin-top:0; margin-bottom:14px;">Click a photo to make it the cover, or click the &times; to delete it.</p>
       <div class="dbm-cover-grid" id="dbmCoverGrid"></div>

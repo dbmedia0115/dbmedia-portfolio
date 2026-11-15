@@ -361,6 +361,7 @@
     }
 
     var nameSaveHandler = null;
+    var sectionSaveHandler = null;
     var addMoreHandler = null;
 
     function openCoverPicker(shoot) {
@@ -382,6 +383,28 @@
         if (coverStatus) { coverStatus.textContent = 'Saved.'; setTimeout(function () { coverStatus.textContent = ''; }, 1200); }
       };
       nameSaveBtn.addEventListener('click', nameSaveHandler);
+
+      // move shoot to another section (category)
+      var sectionSelect = el(cfg.els.sectionSelect);
+      var sectionBtn = el(cfg.els.saveSectionBtn);
+      if (sectionSelect && sectionBtn) {
+        sectionSelect.value = shoot.category || 'events';
+        if (sectionSaveHandler) sectionBtn.removeEventListener('click', sectionSaveHandler);
+        sectionSaveHandler = async function () {
+          var newCat = sectionSelect.value;
+          if (newCat === shoot.category) return;
+          var res = await supabase.from(cfg.shootTable).update({ category: newCat }).eq('id', shoot.id).select();
+          if (res.error || !res.data || !res.data.length) {
+            if (coverStatus) coverStatus.textContent = 'Could not move: ' + ((res.error && res.error.message) || 'try logging in again.');
+            return;
+          }
+          shoot.category = newCat;
+          renderCounts();
+          renderGallery();
+          if (coverStatus) { coverStatus.textContent = 'Moved to ' + sectionSelect.options[sectionSelect.selectedIndex].text + '.'; setTimeout(function () { coverStatus.textContent = ''; }, 1600); }
+        };
+        sectionBtn.addEventListener('click', sectionSaveHandler);
+      }
 
       // add more photos/videos handler
       if (addMoreInput) {
@@ -800,7 +823,7 @@
       mergeBtn: 'dbmMergeBtn', mergeCount: 'dbmMergeCount', uploadModal: 'dbmModalBackdrop', fileInput: 'dbmFileInput',
       catSelect: 'dbmCatSelect', shootSelect: 'dbmShootSelect', saveUpload: 'dbmSaveUpload', cancelUpload: 'dbmCancelUpload',
       uploadStatus: 'dbmUploadStatus', coverModal: 'dbmCoverModalBackdrop', coverGrid: 'dbmCoverGrid', cancelCover: 'dbmCancelCover',
-      nameInput: 'dbmShootNameInput', saveNameBtn: 'dbmSaveShootName',
+      nameInput: 'dbmShootNameInput', saveNameBtn: 'dbmSaveShootName', sectionSelect: 'dbmShootSectionSelect', saveSectionBtn: 'dbmShootSaveSection',
       newShootNameInput: 'dbmNewShootName', newShootNameWrap: 'dbmNewShootNameWrap',
       addMoreInput: 'dbmAddMorePhotosInput', coverStatus: 'dbmCoverStatus'
     }
@@ -815,7 +838,7 @@
       mergeBtn: 'dbmMergeVideoBtn', mergeCount: 'dbmMergeVideoCount', uploadModal: 'dbmVideoModalBackdrop', fileInput: 'dbmVideoFileInput', linkInput: 'dbmVideoLinkInput',
       catSelect: 'dbmVideoCatSelect', shootSelect: 'dbmVideoShootSelect', saveUpload: 'dbmSaveVideoUpload', cancelUpload: 'dbmCancelVideoUpload',
       uploadStatus: 'dbmVideoUploadStatus', coverModal: 'dbmVideoCoverModalBackdrop', coverGrid: 'dbmVideoCoverGrid', cancelCover: 'dbmCancelVideoCover',
-      nameInput: 'dbmVideoShootNameInput', saveNameBtn: 'dbmSaveVideoShootName',
+      nameInput: 'dbmVideoShootNameInput', saveNameBtn: 'dbmSaveVideoShootName', sectionSelect: 'dbmVideoShootSectionSelect', saveSectionBtn: 'dbmVideoShootSaveSection',
       newShootNameInput: 'dbmNewVideoShootName', newShootNameWrap: 'dbmNewVideoShootNameWrap',
       addMoreInput: 'dbmAddMoreVideosInput', coverStatus: 'dbmVideoCoverStatus'
     }
