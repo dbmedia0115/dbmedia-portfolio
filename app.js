@@ -166,7 +166,7 @@
     }
 
     function renderCounts() {
-      var counts = { all: state.shoots.length, events: 0, portraits: 0, fashion: 0 };
+      var counts = { all: state.shoots.length, events: 0, portraits: 0, fashion: 0, studio: 0 };
       state.shoots.forEach(function (s) { if (counts[s.category] !== undefined) counts[s.category]++; });
       Object.keys(counts).forEach(function (key) {
         var node = el(cfg.els.countPrefix + key);
