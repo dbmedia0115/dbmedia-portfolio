@@ -78,6 +78,20 @@
   #dlDlg .opt input { margin-top:3px; } #dlDlg .opt small { display:block; color:var(--muted); font-size:12px; margin-top:2px; }
   #dlDlg .prog { height:8px; background:#e6e4dd; margin:14px 0 6px; } #dlDlg .prog div { height:100%; width:0; background:var(--accent); transition:width .2s; }
   #dlDlg .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; } #dlDlg .row .btn { flex:1; }
+  .love { max-width:1200px; margin:30px auto 0; padding:0 16px; }
+  .love .card { border:1.5px solid var(--ink); background:#fff; padding:26px 22px; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; }
+  .love h2 { font-size:20px; margin-bottom:4px; } .love p { color:var(--muted); font-size:14px; max-width:520px; }
+  .love .acts { display:flex; gap:8px; flex-wrap:wrap; }
+  .stars { display:flex; gap:4px; margin:6px 0 12px; } .stars button { border:0; background:none; font-size:32px; line-height:1; cursor:pointer; color:#d0cec7; padding:0 2px; } .stars button.on { color:#e0a500; }
+  .fld { display:block; width:100%; padding:10px 11px; border:1.5px solid var(--ink); font:15px 'Inter',sans-serif; margin:0 0 10px; background:#fff; }
+  textarea.fld { resize:vertical; min-height:90px; }
+  .chk { display:flex; gap:8px; align-items:flex-start; font-size:13px; color:var(--muted); margin:2px 0 6px; }
+  .prow { display:grid; grid-template-columns:56px 1fr auto; gap:10px; align-items:center; padding:8px 0; border-bottom:1px solid #e6e4dd; }
+  .prow img { width:56px; height:56px; object-fit:cover; display:block; background:#eee; }
+  .prow .nm { font-size:12px; color:var(--muted); margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .prow select, .prow input { font:13px 'Inter',sans-serif; padding:6px; border:1.5px solid var(--ink); background:#fff; }
+  .prow .sel { display:flex; gap:6px; flex-wrap:wrap; } .prow input { width:56px; } .prow .rm { border:0; background:none; font-size:20px; cursor:pointer; color:var(--muted); }
+  .allbar { display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--muted); margin-bottom:6px; } .allbar select { font:13px 'Inter',sans-serif; padding:5px; border:1.5px solid var(--ink); }
   #emailDlg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:40; display:flex; align-items:center; justify-content:center; padding:20px; }
   #emailDlg .box { background:#fff; border:1.5px solid var(--ink); padding:24px; max-width:380px; width:100%; }
   #emailDlg h2 { font-size:17px; margin-bottom:8px; }
@@ -112,6 +126,10 @@
   </div></div>
   <div class="note" id="note"></div>
   <div id="sets"></div>
+  <section class="love hidden" id="love"><div class="card">
+    <div><h2>Loved your photos?</h2><p>Get your favourites printed, or leave a quick review. It really helps a small business.</p></div>
+    <div class="acts"><button class="btn primary" id="printBtn">Order prints</button><button class="btn" id="reviewBtn">Leave a review</button></div>
+  </div></section>
   <footer>Photos &amp; films by <a href="/">Dream Big Media</a> · Nottingham</footer>
 </div>
 
@@ -120,6 +138,7 @@
     <span class="name" id="lbName"></span>
     <div class="acts">
       <button class="heart" id="lbHeart" aria-label="Favourite"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8.2 3.4 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.6 0 6 3.7 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg></button>
+      <button class="iconbtn" id="lbPrint">Print</button>
       <button class="iconbtn" id="lbDl">Download</button>
       <button class="iconbtn" id="lbClose" aria-label="Close">✕</button>
     </div>
@@ -232,6 +251,7 @@
     $('note').innerHTML = data.expiresAt ? 'Available until <strong>' + fmtDate(data.expiresAt) + '</strong>. Please download everything you want to keep before then — files are permanently deleted after this date.' : '';
     $('dlAll').classList.toggle('hidden', !data.allowDownloads);
     $('lbDl').classList.toggle('hidden', !data.allowDownloads);
+    $('love').classList.remove('hidden');
 
     flat = [];
     $('tabs').innerHTML = '<button class="tab on" data-set="">All</button>' + data.sets.map(function (s, i) { return '<button class="tab" data-set="' + i + '">' + esc(s.name) + '</button>'; }).join('');
@@ -386,7 +406,7 @@
       }
       await Promise.all([worker(), worker(), worker()]);
       if (dlCancel) { toast('Download stopped. Files already saved are in your folder.'); return; }
-      dlShow(failed.length ? 'Almost done' : 'All saved', '<p>' + (failed.length ? (files.length - failed.length) + ' of ' + files.length + ' files saved. These didn’t finish: ' + esc(failed.slice(0, 5).join(', ')) + (failed.length > 5 ? '…' : '') + '. Try again to fetch them.' : 'All ' + files.length + ' full-resolution files are in the folder you chose.') + '</p><div class="row"><button class="btn primary" data-close>Done</button></div>');
+      dlShow(failed.length ? 'Almost done' : 'All saved', '<p>' + (failed.length ? (files.length - failed.length) + ' of ' + files.length + ' files saved. These didn’t finish: ' + esc(failed.slice(0, 5).join(', ')) + (failed.length > 5 ? '…' : '') + '. Try again to fetch them.' : 'All ' + files.length + ' full-resolution files are in the folder you chose.') + '</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE);
       return;
     }
     // Other browsers: download the originals one after another.
@@ -397,7 +417,7 @@
       if ($('dlMsg')) { $('dlMsg').textContent = (i + 1) + ' of ' + list.length + ' started'; $('dlBar').style.width = ((i + 1) / list.length * 100) + '%'; }
       await new Promise(function (r) { setTimeout(r, 1200); });
     }
-    if (!dlCancel) dlShow('Downloads started', '<p>All ' + list.length + ' files have been sent to your Downloads folder.</p><div class="row"><button class="btn primary" data-close>Done</button></div>');
+    if (!dlCancel) dlShow('Downloads started', '<p>All ' + list.length + ' files have been sent to your Downloads folder.</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE);
   }
 
   // Phones: fetch originals in groups of 10, then a tap opens the share sheet
@@ -431,12 +451,121 @@
         next();
       });
       function next() {
-        if (last) { dlShow('All done', '<p>All ' + files.length + ' file' + (files.length === 1 ? '' : 's') + ' sent to your phone.</p><div class="row"><button class="btn primary" data-close>Done</button></div>'); return; }
+        if (last) { dlShow('All done', '<p>All ' + files.length + ' file' + (files.length === 1 ? '' : 's') + ' sent to your phone.</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE); return; }
         b++; prepare();
       }
     }
     prepare();
   }
+
+  // ---------- reviews & prints ----------
+  // Optional: paste your Google review link here to offer it after a review.
+  var GOOGLE_REVIEW_URL = '';
+  var WEB3FORMS_KEY = 'c6bf49f1-9da0-4713-8f54-7cb0dd0f5a16';
+  var PRINT_PRODUCTS = ['Photo print (lustre)', 'Fine art print', 'Canvas', 'Framed print'];
+  var PRINT_SIZES = ['6x4"', '7x5"', '10x8"', 'A4', '12x8"', 'A3', '16x12"', '20x16"', 'A2', '30x20"'];
+  var NUDGE = '<p style="margin-top:14px">Happy with your photos? <a href="#" data-review>Leave a quick review</a>. It really helps.</p>';
+  function notify(subject, fields) {
+    try {
+      fetch('https://api.web3forms.com/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(Object.assign({ access_key: WEB3FORMS_KEY, subject: subject, from_name: 'Dream Big Media galleries' }, fields)) }).catch(function () {});
+    } catch (e) {}
+  }
+  function opts(list, sel) { return list.map(function (o) { return '<option' + (o === sel ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join(''); }
+  function countPrints(rows) { var n = rows.reduce(function (a, r) { return a + r.qty; }, 0); return 'Request quote (' + n + ' print' + (n === 1 ? '' : 's') + ')'; }
+  $('dlDlg').addEventListener('click', function (e) { var r = e.target.closest('[data-review]'); if (r) { e.preventDefault(); openReview(); } });
+
+  function openReview() {
+    var rating = 0;
+    dlShow('Leave a review', '<p>How was your experience with Dream Big Media?</p>' +
+      '<div class="stars" id="rvStars">' + [1, 2, 3, 4, 5].map(function (n) { return '<button type="button" data-n="' + n + '" aria-label="' + n + ' star' + (n > 1 ? 's' : '') + '">★</button>'; }).join('') + '</div>' +
+      '<input class="fld" id="rvName" placeholder="Your name" maxlength="80" value="' + esc(data.clientName || '') + '">' +
+      '<input class="fld" id="rvEmail" type="email" placeholder="Your email (not shown publicly)" maxlength="200" value="' + esc(email || '') + '">' +
+      '<textarea class="fld" id="rvText" maxlength="2000" placeholder="What did you love? How did the photos turn out?"></textarea>' +
+      '<label class="chk"><input type="checkbox" id="rvPub"> Dream Big Media can show this review (with my first name) on the website.</label>' +
+      '<p id="rvMsg" style="color:var(--accent);min-height:18px;margin:6px 0 0"></p>' +
+      '<div class="row"><button class="btn primary" id="rvSend">Send review</button><button class="btn" data-close>Cancel</button></div>');
+    var stars = $('rvStars');
+    function paint(n) { Array.prototype.forEach.call(stars.children, function (b) { b.classList.toggle('on', +b.getAttribute('data-n') <= n); }); }
+    stars.addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { rating = +b.getAttribute('data-n'); paint(rating); } });
+    $('rvSend').addEventListener('click', async function () {
+      var name = $('rvName').value.trim(), em = $('rvEmail').value.trim(), text = $('rvText').value.trim(), pub = $('rvPub').checked;
+      if (!rating) { $('rvMsg').textContent = 'Tap the stars to give a rating.'; return; }
+      if (!name || !text) { $('rvMsg').textContent = 'Please add your name and a few words.'; return; }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { $('rvMsg').textContent = 'Please add a valid email.'; return; }
+      this.disabled = true; $('rvMsg').textContent = 'Sending…';
+      var d = await call({ action: 'review', token: data.token, name: name, email: em, rating: rating, text: text, canPublish: pub });
+      if (d.error) { this.disabled = false; $('rvMsg').textContent = d.error === 'session_ended' ? 'Your session ended. Refresh the page and enter your PIN.' : 'Couldn’t send that. Please try again.'; return; }
+      if (!email) { email = em.toLowerCase(); storeLocal('dbm_gallery_email', email); }
+      notify('New review (' + rating + '/5) from ' + name, { name: name, email: em, gallery: data.title, rating: rating + ' out of 5', can_show_on_website: pub ? 'Yes' : 'No', review: text });
+      try { gtag('event', 'gallery_review', { rating: rating }); } catch (e) {}
+      dlShow('Thank you!', '<p>Thanks ' + esc(name.split(' ')[0]) + ', your review means a lot.</p>' +
+        (GOOGLE_REVIEW_URL && rating >= 4 ? '<p>Would you also post it on Google? It helps other people find me.</p><div class="row"><a class="btn primary" href="' + esc(GOOGLE_REVIEW_URL) + '" target="_blank" rel="noopener">Review on Google</a><button class="btn" data-close>Done</button></div>' : '<div class="row"><button class="btn primary" data-close>Done</button></div>'));
+    });
+  }
+  $('reviewBtn').addEventListener('click', openReview);
+
+  function openPrints(start) {
+    var photos = [];
+    data.sets.forEach(function (s) { s.items.forEach(function (it) { if (it.kind === 'photo') photos.push(it); }); });
+    var list = (start || photos.filter(function (it) { return favs[it.id]; })).slice(0, 100);
+    if (!list.length) {
+      dlShow('Order prints', '<p>Tap the ♡ on the photos you’d like printed, then come back here. Or open any photo and tap <b>Print</b>.</p><div class="row"><button class="btn primary" data-close>OK</button></div>');
+      return;
+    }
+    var rows = list.map(function (it) { return { it: it, product: PRINT_PRODUCTS[0], size: '10x8"', qty: 1 }; });
+    var saved = null;
+    function keep() { if ($('prName')) saved = { n: $('prName').value, e: $('prEmail').value, p: $('prPhone').value, t: $('prNotes').value }; }
+    function draw() {
+      dlShow('Order prints', '<p>Choose a print and size for each photo. I’ll email you a quote and a proof before anything is printed.</p>' +
+        (rows.length > 1 ? '<div class="allbar">Set all: <select id="prAllP"><option value="">Print type…</option>' + opts(PRINT_PRODUCTS) + '</select><select id="prAllS"><option value="">Size…</option>' + opts(PRINT_SIZES) + '</select></div>' : '') +
+        '<div id="prRows">' + rows.map(function (r, i) {
+          return '<div class="prow" data-i="' + i + '"><img src="' + esc(r.it.thumb || '') + '" alt=""><div><div class="nm">' + esc(r.it.fileName) + '</div><div class="sel">' +
+            '<select data-k="product" aria-label="Print type">' + opts(PRINT_PRODUCTS, r.product) + '</select><select data-k="size" aria-label="Size">' + opts(PRINT_SIZES, r.size) + '</select>' +
+            '<input data-k="qty" type="number" min="1" max="50" value="' + r.qty + '" aria-label="Quantity"></div></div><button class="rm" data-rm aria-label="Remove">×</button></div>';
+        }).join('') + '</div>' +
+        '<h2 style="margin-top:16px">Your details</h2>' +
+        '<input class="fld" id="prName" placeholder="Your name" maxlength="80" value="' + esc(saved ? saved.n : (data.clientName || '')) + '">' +
+        '<input class="fld" id="prEmail" type="email" placeholder="Email for your quote" maxlength="200" value="' + esc(saved ? saved.e : (email || '')) + '">' +
+        '<input class="fld" id="prPhone" type="tel" placeholder="Phone (optional)" maxlength="40" value="' + esc(saved ? saved.p : '') + '">' +
+        '<textarea class="fld" id="prNotes" maxlength="2000" placeholder="Anything else? Cropping, black & white, delivery date, frame colour…">' + esc(saved ? saved.t : '') + '</textarea>' +
+        '<p id="prMsg" style="color:var(--accent);min-height:18px;margin:0"></p>' +
+        '<div class="row"><button class="btn primary" id="prSend">' + countPrints(rows) + '</button><button class="btn" data-close>Cancel</button></div>');
+      $('prRows').addEventListener('change', function (e) {
+        var el = e.target, row = el.closest('.prow'); if (!row) return;
+        var r = rows[+row.getAttribute('data-i')], k = el.getAttribute('data-k');
+        if (k === 'qty') { r.qty = Math.min(50, Math.max(1, parseInt(el.value, 10) || 1)); el.value = r.qty; } else if (k) r[k] = el.value;
+        $('prSend').textContent = countPrints(rows);
+      });
+      $('prRows').addEventListener('click', function (e) {
+        if (!e.target.closest('[data-rm]')) return;
+        rows.splice(+e.target.closest('.prow').getAttribute('data-i'), 1);
+        if (!rows.length) { dlClose(); return; }
+        keep(); draw();
+      });
+      if ($('prAllP')) {
+        $('prAllP').addEventListener('change', function () { if (this.value) { var v = this.value; rows.forEach(function (r) { r.product = v; }); keep(); draw(); } });
+        $('prAllS').addEventListener('change', function () { if (this.value) { var v = this.value; rows.forEach(function (r) { r.size = v; }); keep(); draw(); } });
+      }
+      $('prSend').addEventListener('click', async function () {
+        var name = $('prName').value.trim(), em = $('prEmail').value.trim(), phone = $('prPhone').value.trim(), notes = $('prNotes').value.trim();
+        if (!name) { $('prMsg').textContent = 'Please add your name.'; return; }
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { $('prMsg').textContent = 'Please add a valid email for your quote.'; return; }
+        this.disabled = true; $('prMsg').textContent = 'Sending…';
+        var d = await call({ action: 'print_request', token: data.token, name: name, email: em, phone: phone, notes: notes,
+          items: rows.map(function (r) { return { itemId: r.it.id, product: r.product, size: r.size, qty: r.qty }; }) });
+        if (d.error) { this.disabled = false; $('prMsg').textContent = d.error === 'session_ended' ? 'Your session ended. Refresh the page and enter your PIN.' : 'Couldn’t send that. Please try again.'; return; }
+        if (!email) { email = em.toLowerCase(); storeLocal('dbm_gallery_email', email); }
+        var lines = d.items.map(function (x) { return x.qty + ' × ' + x.size + ' ' + x.product + ' — ' + x.fileName + (x.set ? ' (' + x.set + ')' : ''); }).join('\n');
+        notify('Print request ' + d.ref + ' from ' + name, { name: name, email: em, phone: phone || 'Not given', gallery: data.title, reference: d.ref, prints: lines, notes: notes || 'None' });
+        try { gtag('event', 'print_request', { items: d.items.length }); } catch (e) {}
+        dlShow('Request sent', '<p>Thanks ' + esc(name.split(' ')[0]) + '! Your reference is <b>' + esc(d.ref) + '</b>. I’ll email you a quote and a proof before anything is printed.</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE);
+      });
+    }
+    draw();
+  }
+  $('printBtn').addEventListener('click', function () { openPrints(null); });
+  $('lbPrint').addEventListener('click', function () { var it = flat[lbIndex]; if (it && it.kind === 'photo') { closeLb(); openPrints([it]); } });
 
   // ---------- lightbox ----------
   function openLb(i) {
@@ -444,6 +573,7 @@
     $('lb').classList.remove('hidden'); document.body.style.overflow = 'hidden';
     $('lbName').textContent = it.fileName;
     $('lbHeart').classList.toggle('on', !!favs[it.id]);
+    $('lbPrint').classList.toggle('hidden', it.kind !== 'photo');
     if (it.kind === 'video') {
       $('lbMedia').innerHTML = '<video controls playsinline preload="metadata"' + (it.poster ? ' poster="' + esc(it.poster) + '"' : '') + ' src="' + esc(it.video) + '"></video>';
     } else {
