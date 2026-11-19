@@ -139,6 +139,12 @@
     border-bottom-color: var(--accent);
     color: var(--accent);
   }
+  .dbm-nav a.dbm-nav-link {
+    font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink);
+    text-decoration: none; padding: 6px 2px; border-bottom: 2px solid transparent;
+  }
+  .dbm-nav a.dbm-nav-link:hover { border-bottom-color: var(--accent); color: var(--accent); }
 
   .dbm-burger { display: none; background: none; border: none; cursor: pointer; }
 
@@ -1049,6 +1055,7 @@
       <button data-section="reviews" data-nav-key="nav_label_reviews">Reviews</button>
       <button data-section="faq" data-nav-key="nav_label_faq">FAQ</button>
       <button data-section="prices" data-nav-key="nav_label_prices">Prices</button>
+      <a class="dbm-nav-link" href="/blog">Blog</a>
       <button data-section="contact" data-nav-key="nav_label_contact">Contact</button>
     </nav>
     <button class="dbm-burger" id="dbmBurger" aria-label="Menu">
