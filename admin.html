@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin | Dream Big Media</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap');
+  :root { --ink:#0a0a0a; --paper:#f5f5f0; --accent:#8c1d18; --line:#d8d6cf; --muted:#6b6a64; --ok:#1d6b2f; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink); font-size:15px; }
+  h1, h2 { font-family:'Archivo Black',sans-serif; font-weight:400; text-transform:uppercase; }
+  h1 { font-size:20px; } h2 { font-size:15px; margin:26px 0 10px; }
+  a { color:inherit; }
+  header { display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1.5px solid var(--ink); background:#fff; }
+  header .who { font-size:12px; color:var(--muted); }
+  main { max-width:980px; margin:0 auto; padding:20px; }
+  .btn { display:inline-flex; align-items:center; gap:6px; border:1.5px solid var(--ink); background:#fff; padding:9px 14px; font:600 14px 'Inter',sans-serif; cursor:pointer; text-decoration:none; color:var(--ink); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .card { background:#fff; border:1.5px solid var(--ink); padding:18px; }
+  input { width:100%; padding:11px 12px; border:1.5px solid var(--ink); font:16px 'Inter',sans-serif; margin-bottom:10px; }
+  label { display:block; font-weight:600; font-size:12px; margin:8px 0 5px; text-transform:uppercase; letter-spacing:.04em; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:12px; }
+  .tile { display:block; background:#fff; border:1.5px solid var(--ink); padding:18px; text-decoration:none; transition:transform .1s; position:relative; }
+  .tile:hover { transform:translateY(-2px); }
+  .tile b { display:block; font-size:16px; margin-bottom:4px; } .tile span { font-size:13px; color:var(--muted); }
+  .badge { position:absolute; top:12px; right:12px; background:var(--accent); color:#fff; font-size:12px; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  .stat { background:#fff; border:1.5px solid var(--line); padding:14px; } .stat .n { font-family:'Archivo Black',sans-serif; font-size:26px; } .stat .l { font-size:12px; color:var(--muted); }
+  .stat.warn { border-color:var(--accent); } .stat.warn .n { color:var(--accent); }
+  .links { display:flex; flex-wrap:wrap; gap:8px; } .links a { font-size:13px; padding:7px 11px; border:1.5px solid var(--line); background:#fff; text-decoration:none; }
+  .links a:hover { border-color:var(--ink); }
+  .health li { list-style:none; padding:6px 0; border-bottom:1px solid var(--line); font-size:14px; display:flex; justify-content:space-between; gap:10px; }
+  .ok { color:var(--ok); font-weight:600; } .bad { color:var(--accent); font-weight:600; } .muted { color:var(--muted); }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<header><h1>Dream Big Media admin</h1><div><span class="who" id="who"></span> <a href="#" id="logout" class="hidden" style="font-size:13px;margin-left:10px">Log out</a></div></header>
+<main>
+  <section id="login" class="card hidden" style="max-width:400px;margin:40px auto">
+    <h2 style="margin-top:0">Log in</h2>
+    <form id="loginForm">
+      <label>Email</label><input type="email" id="em" autocomplete="username" required>
+      <label>Password</label><input type="password" id="pw" autocomplete="current-password" required>
+      <button class="btn primary" type="submit">Log in</button> <span id="msg" class="muted" style="font-size:13px"></span>
+    </form>
+  </section>
+
+  <section id="home" class="hidden">
+    <div class="tiles">
+      <a class="tile" href="/gallery-admin.html"><b>Client galleries</b><span>Create, upload, publish and send invites</span><em class="badge hidden" id="bGal"></em></a>
+      <a class="tile" href="/gallery-admin.html#inboxCount"><b>Inbox</b><span>Print requests, reviews and client emails</span><em class="badge hidden" id="bInbox"></em></a>
+      <a class="tile" href="/blog-admin.html"><b>Blog</b><span>Write and publish posts about your events</span></a>
+      <a class="tile" href="/"><b>Website</b><span>Photos, videos, text, prices and testimonials (admin bar at the top)</span></a>
+    </div>
+
+    <h2>At a glance</h2>
+    <div class="stats">
+      <div class="stat" id="sLive"><div class="n">–</div><div class="l">Live galleries</div></div>
+      <div class="stat" id="sSoon"><div class="n">–</div><div class="l">Expiring in 14 days</div></div>
+      <div class="stat" id="sPrints"><div class="n">–</div><div class="l">Open print requests</div></div>
+      <div class="stat" id="sReviews"><div class="n">–</div><div class="l">Reviews to look at</div></div>
+      <div class="stat" id="sEmails"><div class="n">–</div><div class="l">New client emails (7 days)</div></div>
+      <div class="stat" id="sPosts"><div class="n">–</div><div class="l">Blog posts live</div></div>
+    </div>
+
+    <h2>Health check</h2>
+    <div class="card"><ul class="health" id="health"><li class="muted">Checking…</li></ul></div>
+
+    <h2>Accounts</h2>
+    <div class="links">
+      <a href="https://supabase.com/dashboard/project/dktuxcqjrvpzhtcvhjvl" target="_blank" rel="noopener">Supabase</a>
+      <a href="https://dash.cloudflare.com/f05c75d7b5eeb7c6cfa55977ef3967b6/r2/default/buckets/dbmedia-galleries" target="_blank" rel="noopener">Cloudflare R2</a>
+      <a href="https://github.com/dbmedia0115/dbmedia-portfolio" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://vercel.com/dashboard" target="_blank" rel="noopener">Vercel</a>
+      <a href="https://porkbun.com/account/domainsSpeedy" target="_blank" rel="noopener">Porkbun</a>
+      <a href="https://resend.com/emails" target="_blank" rel="noopener">Resend</a>
+      <a href="https://search.google.com/search-console" target="_blank" rel="noopener">Search Console</a>
+      <a href="https://analytics.google.com" target="_blank" rel="noopener">Analytics</a>
+      <a href="https://business.google.com" target="_blank" rel="noopener">Business Profile</a>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1/dist/umd/supabase.min.js" integrity="sha384-rONULF7BcIpU+mBrW9/e9DhAVbCUwcewd5ivsb4/z3qqi1anKKkZ+KZpFRHHM3pG" crossorigin="anonymous"></script>
+<script src="/config.js"></script>
+<script>
+(function () {
+  var ADMIN_EMAIL = 'db.media0115@gmail.com';
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  function $(id) { return document.getElementById(id); }
+  function show(id, on) { $(id).classList.toggle('hidden', !on); }
+  function day(offset) { var d = new Date(); d.setDate(d.getDate() + offset); return d.toISOString().slice(0, 10); }
+  function stat(id, n, warnIf) { $(id).querySelector('.n').textContent = n; $(id).classList.toggle('warn', !!warnIf && n > 0); }
+  function badge(id, n) { $(id).textContent = n; show(id, n > 0); }
+
+  async function refresh() {
+    var s = (await sb.auth.getSession()).data.session;
+    var ok = !!(s && s.user.email === ADMIN_EMAIL);
+    $('who').textContent = ok ? s.user.email : '';
+    show('logout', ok); show('login', !ok); show('home', ok);
+    if (ok) load();
+  }
+  $('loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault(); $('msg').textContent = 'Logging in…';
+    var r = await sb.auth.signInWithPassword({ email: $('em').value.trim(), password: $('pw').value });
+    $('msg').textContent = r.error ? r.error.message : ''; refresh();
+  });
+  $('logout').addEventListener('click', async function (e) { e.preventDefault(); await sb.auth.signOut(); refresh(); });
+
+  async function count(q) { var r = await q; return r.error ? '?' : (r.count || 0); }
+  async function load() {
+    var live = await count(sb.from('galleries').select('id', { count: 'exact', head: true }).eq('status', 'live'));
+    var soon = await count(sb.from('galleries').select('id', { count: 'exact', head: true }).eq('status', 'live').lte('expires_at', day(14)));
+    var prints = await count(sb.from('print_requests').select('id', { count: 'exact', head: true }).in('status', ['new', 'quoted', 'paid']));
+    var reviews = await count(sb.from('gallery_reviews').select('id', { count: 'exact', head: true }).eq('can_publish', true).eq('added_to_site', false));
+    var emails = await count(sb.from('gallery_contacts').select('id', { count: 'exact', head: true }).gte('first_seen', new Date(Date.now() - 7 * 864e5).toISOString()));
+    var posts = await count(sb.from('blog_posts').select('id', { count: 'exact', head: true }).eq('status', 'published'));
+    stat('sLive', live); stat('sSoon', soon, true); stat('sPrints', prints, true); stat('sReviews', reviews, true); stat('sEmails', emails); stat('sPosts', posts);
+    badge('bGal', soon === '?' ? 0 : soon); badge('bInbox', (prints === '?' ? 0 : prints) + (reviews === '?' ? 0 : reviews));
+    health();
+  }
+
+  // Quick checks that the important pieces answer. Nothing here changes anything.
+  async function health() {
+    var token = (await sb.auth.getSession()).data.session.access_token;
+    var checks = [
+      ['Website', fetch('/?h=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok; })],
+      ['Blog', fetch('/blog?h=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok; })],
+      ['Database', sb.from('galleries').select('id', { head: true, count: 'exact' }).then(function (r) { return !r.error; })],
+      ['Gallery storage (R2)', fetch(SUPABASE_URL + '/functions/v1/r2-sign', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: 'Bearer ' + token }, body: JSON.stringify({ action: 'get', keys: ['galleries/health-check.txt'] }) }).then(function (r) { return r.ok; })],
+      ['Client gallery service', fetch(SUPABASE_URL + '/functions/v1/gallery', { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_PUBLISHABLE_KEY }, body: JSON.stringify({ action: 'open', slug: '0000000000000000', pin: '0000' }) }).then(function (r) { return r.status === 404 || r.status === 429; })]
+    ];
+    var rows = [];
+    for (var i = 0; i < checks.length; i++) {
+      var good = false; try { good = await checks[i][1]; } catch (e) { good = false; }
+      rows.push('<li><span>' + checks[i][0] + '</span><span class="' + (good ? 'ok">Working' : 'bad">Not responding') + '</span></li>');
+    }
+    var exp = await sb.from('galleries').select('id', { count: 'exact', head: true }).eq('status', 'live').lt('expires_at', day(0));
+    var overdue = exp.count || 0;
+    rows.push('<li><span>Expired galleries waiting to be deleted</span><span class="' + (overdue ? 'bad">' + overdue + ' (open Client galleries to clear)' : 'ok">None') + '</span></li>');
+    $('health').innerHTML = rows.join('');
+  }
+
+  sb.auth.onAuthStateChange(function () {});
+  refresh();
+})();
+</script>
+</body>
+</html>
