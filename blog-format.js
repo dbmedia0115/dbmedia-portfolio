@@ -101,7 +101,7 @@
 
   function excerptOf(post) {
     if (post.excerpt) return post.excerpt;
-    var plain = String(post.body || '').replace(/\[photo\s+\d+\]/gi, '').replace(/[#*\[\]]|\(https?:[^)]+\)/g, '').replace(/\s+/g, ' ').trim();
+    var plain = String(post.body || '').replace(/^\s*[-*]\s+/gm, '').replace(/\[photo\s+\d+\]/gi, '').replace(/[#*\[\]]|\(https?:[^)]+\)/g, '').replace(/\s+/g, ' ').trim();
     return plain.length > 180 ? plain.slice(0, 177).replace(/\s+\S*$/, '') + '…' : plain;
   }
 
