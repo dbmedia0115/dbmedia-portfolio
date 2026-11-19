@@ -142,7 +142,7 @@
           <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,.zip,application/zip">
         </div>
       </div>
-      <p class="small muted" style="margin-top:8px">Photos (JPG/PNG/WebP): a 2048px web copy and a thumbnail are made automatically. Films: MP4 (H.264) plays best. ZIP: becomes the client's “Download all”. Files over 4.5 GB: upload with rclone, then use “Register a file” below.</p>
+      <p class="small muted" style="margin-top:8px">Photos (JPG/PNG/WebP): your original is delivered untouched at full resolution; a sharp 3200px viewing copy and a thumbnail are made automatically. Films: MP4 (H.264) plays best. ZIP: becomes the client's “Download all”. Files over 4.5 GB: upload with rclone, then use “Register a file” below.</p>
       <div class="row" style="margin-top:12px"><button class="btn primary" id="uploadBtn">Upload</button><span id="upStatus" class="small muted"></span></div>
       <div class="progress"><div id="upBar"></div></div>
       <div class="log hidden" id="upLog"></div>
@@ -403,16 +403,35 @@
       x.send(blob);
     });
   }
-  async function resize(file, maxPx, quality) {
-    var bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
-    var scale = Math.min(1, maxPx / Math.max(bmp.width, bmp.height));
-    var w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
-    var c = document.createElement('canvas'); c.width = w; c.height = h;
-    var ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bmp, 0, 0, w, h);
-    var blob = await new Promise(function (res) { c.toBlob(res, 'image/jpeg', quality); });
-    var out = { blob: blob, width: bmp.width, height: bmp.height };
+  // Preview copies only; the original file is always uploaded untouched.
+  // Big previews (3200 px, quality 92) so photos look sharp on 4K and retina
+  // screens. Shrinking in halves keeps fine detail crisp in every browser.
+  var WEB_PX = 3200, WEB_Q = 0.92, THUMB_PX = 960, THUMB_Q = 0.85;
+  async function decode(file) { return createImageBitmap(file, { imageOrientation: 'from-image' }); }
+  function shrink(src, srcW, srcH, maxPx) {
+    var scale = Math.min(1, maxPx / Math.max(srcW, srcH));
+    var tw = Math.max(1, Math.round(srcW * scale)), th = Math.max(1, Math.round(srcH * scale));
+    var cur = src, cw = srcW, ch = srcH;
+    while (cw / 2 >= tw && ch / 2 >= th) {
+      var nw = Math.round(cw / 2), nh = Math.round(ch / 2);
+      var step = document.createElement('canvas'); step.width = nw; step.height = nh;
+      var sx = step.getContext('2d'); sx.imageSmoothingEnabled = true; sx.imageSmoothingQuality = 'high'; sx.drawImage(cur, 0, 0, nw, nh);
+      cur = step; cw = nw; ch = nh;
+    }
+    var c = document.createElement('canvas'); c.width = tw; c.height = th;
+    var ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, tw, th); ctx.drawImage(cur, 0, 0, tw, th);
+    return c;
+  }
+  function jpeg(canvas, q) { return new Promise(function (res, rej) { canvas.toBlob(function (b) { b ? res(b) : rej(new Error('Could not make preview')); }, 'image/jpeg', q); }); }
+  async function previews(file) {
+    var bmp = await decode(file);
+    var W = bmp.width, H = bmp.height;
+    var webC = shrink(bmp, W, H, WEB_PX);
+    var web = await jpeg(webC, WEB_Q);
+    var thumb = await jpeg(shrink(webC, webC.width, webC.height, THUMB_PX), THUMB_Q);
     bmp.close && bmp.close();
-    return out;
+    return { web: web, thumb: thumb, width: W, height: H };
   }
   function videoInfo(file) {
     return new Promise(function (resolve) {
@@ -422,10 +441,10 @@
       v.onloadedmetadata = function () { v.currentTime = Math.min(2, (v.duration || 2) / 3); };
       v.onseeked = function () {
         try {
-          var scale = Math.min(1, 1280 / v.videoWidth);
+          var scale = Math.min(1, 1920 / v.videoWidth);
           var c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * scale); c.height = Math.round(v.videoHeight * scale);
           c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
-          c.toBlob(function (b) { done(b); }, 'image/jpeg', 0.82);
+          c.toBlob(function (b) { done(b); }, 'image/jpeg', 0.9);
         } catch (e) { done(null); }
       };
       v.onerror = function () { done(null); };
@@ -457,12 +476,12 @@
         var row = { gallery_id: gid, set_name: set, file_name: name, size_bytes: file.size, sort: maxSort + idx + 1 };
         var uploads = [];
         if (isPhoto) {
-          var web = await resize(file, 2048, 0.86), thumb = await resize(file, 480, 0.8);
-          row.kind = 'photo'; row.width = web.width; row.height = web.height;
+          var pv = await previews(file);
+          row.kind = 'photo'; row.width = pv.width; row.height = pv.height;
           row.original_key = 'galleries/' + gid + '/original/' + set + '/' + name;
           row.web_key = 'galleries/' + gid + '/web/' + set + '/' + baseName(name) + '.jpg';
           row.thumb_key = 'galleries/' + gid + '/thumb/' + set + '/' + baseName(name) + '.jpg';
-          uploads = [[row.original_key, file, file.type], [row.web_key, web.blob, 'image/jpeg'], [row.thumb_key, thumb.blob, 'image/jpeg']];
+          uploads = [[row.original_key, file, file.type], [row.web_key, pv.web, 'image/jpeg'], [row.thumb_key, pv.thumb, 'image/jpeg']];
         } else if (isVideo) {
           var vi = await videoInfo(file);
           row.kind = 'video'; row.width = vi.width; row.height = vi.height;
