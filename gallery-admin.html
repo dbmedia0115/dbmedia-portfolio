@@ -106,6 +106,11 @@
       <div class="card"><h3 style="margin-top:0">Print requests</h3><div id="printList"><p class="muted small">Loading…</p></div></div>
       <div class="card"><h3 style="margin-top:0">Reviews</h3><div id="reviewList"><p class="muted small">Loading…</p></div></div>
     </div>
+    <div class="card" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between"><h3 style="margin:0">Client emails</h3><button class="btn primary" id="contactCsv">Download all emails (CSV)</button></div>
+      <p class="small muted" id="contactCount" style="margin:4px 0 10px"></p>
+      <div id="contactList" style="overflow-x:auto"><p class="muted small">Loading…</p></div>
+    </div>
   </section>
 
   <!-- Detail -->
@@ -576,6 +581,7 @@
     var p = await sb.from('print_requests').select('*').order('created_at', { ascending: false }).limit(100);
     var r = await sb.from('gallery_reviews').select('*').order('created_at', { ascending: false }).limit(100);
     prints = p.data || []; reviews = r.data || [];
+    loadContacts();
     var open = prints.filter(function (x) { return x.status === 'new' || x.status === 'quoted' || x.status === 'paid'; }).length;
     var fresh = reviews.filter(function (x) { return !x.added_to_site; }).length;
     $('inboxCount').textContent = (open ? open + ' print request' + (open === 1 ? '' : 's') + ' open' : 'No open print requests') + ' · ' + reviews.length + ' review' + (reviews.length === 1 ? '' : 's');
@@ -632,6 +638,43 @@
       await sb.from('gallery_reviews').update({ added_to_site: true }).eq('id', x.id);
       toast('Added to your homepage testimonials. Reorder or edit them from the homepage admin bar.'); loadInbox();
     }
+  });
+
+  // ---------- client emails (captured before downloads) ----------
+  var contacts = [];
+  function csvCell(v) {
+    var s = v == null ? '' : String(v);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; // stop spreadsheets treating text as a formula
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  function ymd(ts) { return ts ? new Date(ts).toISOString().slice(0, 16).replace('T', ' ') : ''; }
+  async function loadContacts() {
+    var r = await sb.from('gallery_contacts').select('*').order('last_seen', { ascending: false }).limit(2000);
+    contacts = r.data || [];
+    var unique = {}; contacts.forEach(function (c) { unique[c.email] = true; });
+    $('contactCount').textContent = Object.keys(unique).length + ' email' + (Object.keys(unique).length === 1 ? '' : 's') + ' from ' + contacts.length + ' gallery visit' + (contacts.length === 1 ? '' : 's');
+    $('contactList').innerHTML = contacts.length ? '<table class="small"><thead><tr><th>Email</th><th>Name</th><th>Gallery</th><th>Files</th><th>News OK</th><th>Last download</th></tr></thead><tbody>' +
+      contacts.slice(0, 25).map(function (c) {
+        return '<tr><td><a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a></td><td>' + esc(c.name || '') + '</td><td>' + esc(c.gallery_title || 'Deleted gallery') + '</td><td>' + c.downloads + '</td><td>' + (c.marketing_ok ? 'Yes' : 'No') + '</td><td>' + esc(when(c.last_seen)) + '</td></tr>';
+      }).join('') + '</tbody></table>' + (contacts.length > 25 ? '<p class="small muted" style="margin-top:6px">Showing the latest 25. The CSV has everyone.</p>' : '')
+      : '<p class="muted small">Clients enter their email before downloading. Everyone appears here.</p>';
+  }
+  // One file with every email: gallery downloads, print requests and reviews.
+  $('contactCsv').addEventListener('click', async function () {
+    var c = await sb.from('gallery_contacts').select('*').order('first_seen', { ascending: true }).limit(10000);
+    var p = await sb.from('print_requests').select('client_name, client_email, phone, gallery_title, created_at, ref').order('created_at', { ascending: true }).limit(10000);
+    var r = await sb.from('gallery_reviews').select('client_name, client_email, gallery_title, created_at, rating').order('created_at', { ascending: true }).limit(10000);
+    if (c.error || p.error || r.error) { toast('Could not export: ' + (c.error || p.error || r.error).message); return; }
+    var rows = [['Email', 'Name', 'Phone', 'Source', 'Gallery', 'Happy to get news', 'Files downloaded', 'First seen', 'Last seen', 'Details']];
+    (c.data || []).forEach(function (x) { rows.push([x.email, x.name, '', 'Gallery download', x.gallery_title, x.marketing_ok ? 'Yes' : 'No', x.downloads, ymd(x.first_seen), ymd(x.last_seen), '']); });
+    (p.data || []).forEach(function (x) { rows.push([x.client_email, x.client_name, x.phone, 'Print request', x.gallery_title, '', '', ymd(x.created_at), ymd(x.created_at), 'Ref ' + x.ref]); });
+    (r.data || []).forEach(function (x) { rows.push([x.client_email, x.client_name, '', 'Review', x.gallery_title, '', '', ymd(x.created_at), ymd(x.created_at), x.rating + ' stars']); });
+    var csv = '﻿' + rows.map(function (row) { return row.map(csvCell).join(','); }).join('\r\n') + '\r\n';
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = 'dream-big-media-client-emails-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    toast('Saved ' + (rows.length - 1) + ' rows to ' + a.download);
   });
 
   // ---------- cleanup (also run by the nightly GitHub job) ----------
