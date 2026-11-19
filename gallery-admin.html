@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Client Galleries — Admin | Dream Big Media</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap');
+  :root { --ink:#0a0a0a; --paper:#f5f5f0; --accent:#8c1d18; --line:#d8d6cf; --muted:#6b6a64; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink); font-size:14px; }
+  h1, h2, h3 { font-family:'Archivo Black',sans-serif; font-weight:400; text-transform:uppercase; }
+  h1 { font-size:22px; } h2 { font-size:18px; margin-bottom:12px; } h3 { font-size:14px; margin:18px 0 8px; }
+  a { color:var(--accent); }
+  header { display:flex; justify-content:space-between; align-items:center; padding:16px 24px; border-bottom:1.5px solid var(--ink); background:#fff; position:sticky; top:0; z-index:5; }
+  header .who { color:var(--muted); font-size:12px; }
+  main { max-width:1100px; margin:0 auto; padding:24px; }
+  .btn { display:inline-flex; align-items:center; gap:6px; border:1.5px solid var(--ink); background:#fff; color:var(--ink); padding:8px 14px; font:600 13px 'Inter',sans-serif; cursor:pointer; text-decoration:none; }
+  .btn:hover { background:var(--ink); color:var(--paper); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover { background:#6e1612; }
+  .btn.danger { color:var(--accent); border-color:var(--accent); }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .card { background:#fff; border:1.5px solid var(--ink); padding:20px; margin-bottom:18px; }
+  input[type=text], input[type=email], input[type=password], input[type=date], textarea, select {
+    width:100%; padding:9px 11px; border:1.5px solid var(--ink); font:14px 'Inter',sans-serif; background:#fff; }
+  label { display:block; font-weight:600; font-size:12px; margin:10px 0 4px; text-transform:uppercase; letter-spacing:.04em; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 16px; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  th { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  tr.click { cursor:pointer; } tr.click:hover td { background:#faf9f5; }
+  .pill { display:inline-block; padding:2px 8px; font-size:11px; font-weight:700; text-transform:uppercase; border:1.5px solid currentColor; }
+  .pill.draft { color:var(--muted); } .pill.live { color:#1d6b2f; } .pill.expired { color:var(--accent); }
+  .muted { color:var(--muted); } .small { font-size:12px; }
+  .thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; }
+  .thumb { position:relative; background:#eee; aspect-ratio:1; overflow:hidden; border:1px solid var(--line); }
+  .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .thumb .tag { position:absolute; left:4px; top:4px; background:var(--ink); color:#fff; font-size:10px; padding:1px 5px; text-transform:uppercase; }
+  .thumb .cover { background:var(--accent); left:auto; right:4px; }
+  .thumb .acts { position:absolute; inset:auto 0 0 0; display:none; gap:4px; padding:4px; background:rgba(10,10,10,.75); }
+  .thumb:hover .acts { display:flex; }
+  .thumb .acts button { flex:1; font-size:10px; padding:3px; border:0; cursor:pointer; background:#fff; }
+  .thumb .name { position:absolute; inset:auto 0 0 0; font-size:10px; color:#fff; background:rgba(10,10,10,.55); padding:2px 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .thumb:hover .name { display:none; }
+  .progress { height:8px; background:var(--line); margin-top:10px; }
+  .progress > div { height:100%; width:0; background:var(--accent); transition:width .2s; }
+  .log { font:12px ui-monospace,Consolas,monospace; max-height:140px; overflow:auto; background:#faf9f5; border:1px solid var(--line); padding:8px; margin-top:8px; white-space:pre-wrap; }
+  .notice { padding:12px 14px; border-left:4px solid var(--accent); background:#fff; margin:12px 0; }
+  .pinbox { font:700 32px ui-monospace,Consolas,monospace; letter-spacing:.3em; }
+  .hidden { display:none !important; }
+  #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; font-size:13px; display:none; z-index:20; }
+  @media (max-width:700px) { .grid2 { grid-template-columns:1fr; } main { padding:14px; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="row"><a href="/" style="text-decoration:none;color:inherit"><h1>DB Media · Client Galleries</h1></a></div>
+  <div class="row"><span class="who" id="who"></span><button class="btn hidden" id="logoutBtn">Log out</button></div>
+</header>
+
+<main>
+  <!-- Login -->
+  <section id="loginView" class="card hidden" style="max-width:420px;margin:40px auto">
+    <h2>Admin login</h2>
+    <form id="loginForm">
+      <label>Email</label><input type="email" id="loginEmail" autocomplete="username" required>
+      <label>Password</label><input type="password" id="loginPassword" autocomplete="current-password" required>
+      <div class="row" style="margin-top:16px"><button class="btn primary" type="submit">Log in</button><span id="loginMsg" class="muted small"></span></div>
+    </form>
+  </section>
+
+  <!-- List -->
+  <section id="listView" class="hidden">
+    <div class="row" style="justify-content:space-between;margin-bottom:14px">
+      <h2 style="margin:0">Galleries</h2>
+      <button class="btn primary" id="newBtn">+ New gallery</button>
+    </div>
+    <div class="card hidden" id="newCard">
+      <h2>New gallery</h2>
+      <form id="newForm">
+        <div class="grid2">
+          <div><label>Gallery title</label><input type="text" id="nTitle" placeholder="e.g. Ama &amp; Kofi — Wedding" required maxlength="120"></div>
+          <div><label>Client name</label><input type="text" id="nClient" placeholder="e.g. Ama" maxlength="120"></div>
+          <div><label>Client email</label><input type="email" id="nEmail" placeholder="client@email.com" maxlength="200"></div>
+          <div><label>Private notes (only you see these)</label><input type="text" id="nNotes" maxlength="500"></div>
+        </div>
+        <div class="row" style="margin-top:16px"><button class="btn primary" type="submit">Create gallery</button><button class="btn" type="button" id="cancelNew">Cancel</button></div>
+      </form>
+    </div>
+    <div class="card" style="padding:6px 12px">
+      <table>
+        <thead><tr><th>Gallery</th><th>Client</th><th>Status</th><th>Expires</th><th>Files</th></tr></thead>
+        <tbody id="galleryRows"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Detail -->
+  <section id="detailView" class="hidden">
+    <div class="row" style="margin-bottom:14px"><button class="btn" id="backBtn">← All galleries</button></div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <h2 id="dTitle" style="margin-bottom:4px"></h2>
+          <div class="muted" id="dMeta"></div>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="publishBtn">Publish</button>
+          <button class="btn" id="inviteBtn">Copy invite + new PIN</button>
+          <a class="btn" id="viewBtn" target="_blank" rel="noopener">View as client ↗</a>
+        </div>
+      </div>
+      <div id="inviteBox" class="notice hidden">
+        <div class="small muted">PIN for this invite (only shown now — sending a new invite makes a new PIN):</div>
+        <div class="pinbox" id="pinShow"></div>
+        <textarea id="inviteText" rows="9" style="margin-top:8px"></textarea>
+        <div class="row" style="margin-top:8px"><button class="btn" id="copyInvite">Copy email text</button><a class="btn" id="mailInvite">Open in email app</a></div>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <label style="margin:0;display:flex;gap:6px;align-items:center;text-transform:none;font-weight:500"><input type="checkbox" id="dlToggle"> Allow downloads</label>
+        <button class="btn" id="extendBtn">+30 days</button>
+        <button class="btn danger" id="deleteGalleryBtn">Delete gallery &amp; files</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Upload</h2>
+      <div class="grid2">
+        <div>
+          <label>Set name (e.g. Ceremony, Reception, Highlights)</label>
+          <input type="text" id="setName" value="Gallery" maxlength="60" list="setList">
+          <datalist id="setList"></datalist>
+        </div>
+        <div>
+          <label>Files</label>
+          <input type="file" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,.zip,application/zip">
+        </div>
+      </div>
+      <p class="small muted" style="margin-top:8px">Photos (JPG/PNG/WebP): a 2048px web copy and a thumbnail are made automatically. Films: MP4 (H.264) plays best. ZIP: becomes the client's “Download all”. Files over 4.5 GB: upload with rclone, then use “Register a file” below.</p>
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="uploadBtn">Upload</button><span id="upStatus" class="small muted"></span></div>
+      <div class="progress"><div id="upBar"></div></div>
+      <div class="log hidden" id="upLog"></div>
+
+      <details style="margin-top:14px">
+        <summary class="small" style="cursor:pointer">Register a file uploaded with rclone</summary>
+        <div class="grid2">
+          <div><label>R2 path</label><input type="text" id="regKey" placeholder="galleries/&lt;id&gt;/video/film.mp4"></div>
+          <div><label>Type</label><select id="regKind"><option value="video">Film</option><option value="zip">ZIP (Download all)</option></select></div>
+        </div>
+        <div class="row" style="margin-top:8px"><button class="btn" id="regBtn">Register</button><span class="small muted" id="regHint"></span></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Files</h2><span class="small muted" id="fileCount"></span></div>
+      <div id="itemsWrap" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card">
+      <h2>Client favourites</h2>
+      <div id="favWrap" class="muted">None yet.</div>
+    </div>
+
+    <div class="card">
+      <h2>Activity</h2>
+      <div id="activityWrap" class="muted small">No activity yet.</div>
+    </div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  var ADMIN_EMAIL = 'db.media0115@gmail.com';
+  var SITE = 'https://dreambigmedia.co.uk';
+  var FN = SUPABASE_URL + '/functions/v1/';
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  var session = null, galleries = [], current = null, items = [];
+
+  function $(id) { return document.getElementById(id); }
+  function show(id, on) { $(id).classList.toggle('hidden', !on); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, 3500); }
+  function fmtDate(d) { return d ? new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; }
+  function fmtSize(b) { if (!b) return ''; var u = ['B', 'KB', 'MB', 'GB']; var i = 0; while (b >= 1024 && i < 3) { b /= 1024; i++; } return b.toFixed(i ? 1 : 0) + ' ' + u[i]; }
+  function cleanPart(s) { return String(s).replace(/[\\\/\u0000-\u001f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120) || 'file'; }
+  function baseName(n) { return n.replace(/\.[^.]+$/, ''); }
+
+  // ---------- auth ----------
+  async function refreshSession() {
+    var r = await sb.auth.getSession();
+    session = r.data.session;
+    var ok = session && session.user.email === ADMIN_EMAIL;
+    $('who').textContent = ok ? session.user.email : '';
+    show('logoutBtn', ok);
+    show('loginView', !ok);
+    show('listView', ok && !current);
+    show('detailView', ok && !!current);
+    return ok;
+  }
+  $('loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    $('loginMsg').textContent = 'Logging in…';
+    var r = await sb.auth.signInWithPassword({ email: $('loginEmail').value.trim(), password: $('loginPassword').value });
+    $('loginMsg').textContent = r.error ? r.error.message : '';
+    if (!r.error && await refreshSession()) loadList();
+  });
+  $('logoutBtn').addEventListener('click', async function () { await sb.auth.signOut(); current = null; refreshSession(); });
+
+  async function sign(body) {
+    var r = await sb.auth.getSession(); session = r.data.session;
+    var res = await fetch(FN + 'r2-sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_PUBLISHABLE_KEY },
+      body: JSON.stringify(body)
+    });
+    var data = await res.json().catch(function () { return {}; });
+    if (!res.ok) throw new Error(data.error || ('Signer error ' + res.status));
+    return data;
+  }
+  async function signedUrls(action, keys) {
+    var out = {};
+    for (var i = 0; i < keys.length; i += 200) {
+      var d = await sign({ action: action, keys: keys.slice(i, i + 200) });
+      Object.assign(out, d.urls);
+    }
+    return out;
+  }
+
+  // ---------- list ----------
+  async function loadList() {
+    var r = await sb.from('galleries').select('id, slug, title, client_name, status, expires_at, created_at, gallery_items(count)').order('created_at', { ascending: false });
+    if (r.error) { $('galleryRows').innerHTML = '<tr><td colspan="5">' + esc(r.error.message) + '</td></tr>'; return; }
+    galleries = r.data;
+    $('galleryRows').innerHTML = galleries.length ? galleries.map(function (g) {
+      var n = g.gallery_items && g.gallery_items[0] ? g.gallery_items[0].count : 0;
+      return '<tr class="click" data-id="' + g.id + '"><td><strong>' + esc(g.title) + '</strong></td><td>' + esc(g.client_name) + '</td><td><span class="pill ' + g.status + '">' + g.status + '</span></td><td>' + fmtDate(g.expires_at) + '</td><td>' + n + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" class="muted">No galleries yet. Click “New gallery”.</td></tr>';
+    Array.prototype.forEach.call(document.querySelectorAll('#galleryRows tr.click'), function (tr) {
+      tr.addEventListener('click', function () { openGallery(tr.getAttribute('data-id')); });
+    });
+  }
+  $('newBtn').addEventListener('click', function () { show('newCard', true); $('nTitle').focus(); });
+  $('cancelNew').addEventListener('click', function () { show('newCard', false); });
+  $('newForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var r = await sb.from('galleries').insert({
+      title: $('nTitle').value.trim(), client_name: $('nClient').value.trim() || null,
+      client_email: $('nEmail').value.trim() || null, notes: $('nNotes').value.trim() || null
+    }).select().single();
+    if (r.error) { toast(r.error.message); return; }
+    $('newForm').reset(); show('newCard', false);
+    openGallery(r.data.id);
+  });
+
+  // ---------- detail ----------
+  async function openGallery(id) {
+    var r = await sb.from('galleries').select('*').eq('id', id).single();
+    if (r.error) { toast(r.error.message); return; }
+    current = r.data;
+    show('listView', false); show('detailView', true); show('inviteBox', false);
+    renderHeader();
+    await loadItems();
+    loadFavs(); loadActivity();
+    window.scrollTo(0, 0);
+  }
+  $('backBtn').addEventListener('click', function () { current = null; show('detailView', false); show('listView', true); loadList(); });
+
+  function renderHeader() {
+    var g = current;
+    $('dTitle').textContent = g.title;
+    var bits = ['<span class="pill ' + g.status + '">' + g.status + '</span>'];
+    if (g.client_name) bits.push(esc(g.client_name));
+    if (g.client_email) bits.push(esc(g.client_email));
+    if (g.delivered_at) bits.push('delivered ' + fmtDate(g.delivered_at));
+    if (g.expires_at) bits.push('<strong>expires ' + fmtDate(g.expires_at) + '</strong>');
+    $('dMeta').innerHTML = bits.join(' · ');
+    $('publishBtn').textContent = g.status === 'live' ? 'Unpublish' : 'Publish';
+    $('publishBtn').disabled = g.status === 'expired';
+    $('dlToggle').checked = g.allow_downloads;
+    $('viewBtn').href = SITE + '/gallery.html?g=' + g.slug;
+    $('regHint').textContent = 'Upload into galleries/' + g.id + '/video/ or /zip/';
+  }
+  async function patchGallery(patch) {
+    var r = await sb.from('galleries').update(patch).eq('id', current.id).select().single();
+    if (r.error) { toast(r.error.message); return false; }
+    current = r.data; renderHeader(); return true;
+  }
+  $('publishBtn').addEventListener('click', async function () {
+    if (current.status === 'live') {
+      if (confirm('Unpublish? The client link will stop working until you publish again.')) await patchGallery({ status: 'draft' });
+      return;
+    }
+    if (!items.length) { toast('Upload some files first.'); return; }
+    if (!current.pin_hash) toast('Tip: use “Copy invite + new PIN” next — the gallery has no PIN yet.');
+    if (await patchGallery({ status: 'live' })) toast('Live. Expires ' + fmtDate(current.expires_at) + '.');
+  });
+  $('dlToggle').addEventListener('change', function () { patchGallery({ allow_downloads: this.checked }); });
+  $('extendBtn').addEventListener('click', async function () {
+    var base = current.expires_at ? new Date(current.expires_at + 'T12:00:00') : new Date();
+    base.setDate(base.getDate() + 30);
+    var patch = { expires_at: base.toISOString().slice(0, 10) };
+    if (current.status === 'expired') { toast('This gallery has already been deleted from storage. Re-upload from your backup drive first.'); return; }
+    if (await patchGallery(patch)) toast('New expiry: ' + fmtDate(current.expires_at));
+  });
+  $('deleteGalleryBtn').addEventListener('click', async function () {
+    if (!confirm('Delete “' + current.title + '” and ALL its files from storage? This cannot be undone. Make sure your backup drive has a copy.')) return;
+    try {
+      var d = await sign({ action: 'delete_prefix', prefix: 'galleries/' + current.id + '/' });
+      var r = await sb.from('galleries').delete().eq('id', current.id);
+      if (r.error) throw new Error(r.error.message);
+      toast('Deleted ' + d.deleted + ' files.');
+      current = null; show('detailView', false); show('listView', true); loadList();
+    } catch (err) { toast('Delete failed: ' + err.message); }
+  });
+
+  // ---------- invite ----------
+  function newPin() { var a = new Uint32Array(1); crypto.getRandomValues(a); return String(1000 + (a[0] % 9000)); }
+  $('inviteBtn').addEventListener('click', async function () {
+    if (current.status !== 'live' && !confirm('This gallery is not published yet. Make the PIN anyway?')) return;
+    var pin = newPin();
+    var r = await sb.rpc('set_gallery_pin', { p_gallery_id: current.id, p_pin: pin });
+    if (r.error) { toast(r.error.message); return; }
+    current.pin_hash = 'set';
+    var link = SITE + '/gallery.html?g=' + current.slug;
+    var first = (current.client_name || '').split(' ')[0] || 'there';
+    var text = 'Hi ' + first + ',\n\nYour photos are ready! You can view and download them here:\n\n' + link + '\n\nGallery PIN: ' + pin + '\n\n' +
+      (current.expires_at ? 'The gallery is available until ' + fmtDate(current.expires_at) + '. After that date the files are permanently deleted from our servers, so please download everything you want to keep before then.\n\n' : '') +
+      'Tap the heart on your favourites if you\'d like to pick images for prints or edits.\n\nThank you for choosing Dream Big Media.\n\nSamuel\nDream Big Media · dreambigmedia.co.uk';
+    $('pinShow').textContent = pin;
+    $('inviteText').value = text;
+    var subject = 'Your gallery is ready — ' + current.title;
+    $('mailInvite').href = 'mailto:' + encodeURIComponent(current.client_email || '') + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text);
+    show('inviteBox', true);
+    try { await navigator.clipboard.writeText(text); toast('Invite copied. PIN ' + pin); } catch (e) { toast('PIN ' + pin + ' — copy the text below.'); }
+  });
+  $('copyInvite').addEventListener('click', async function () { await navigator.clipboard.writeText($('inviteText').value); toast('Copied.'); });
+
+  // ---------- items ----------
+  async function loadItems() {
+    var r = await sb.from('gallery_items').select('*').eq('gallery_id', current.id).order('set_name').order('sort').order('created_at');
+    if (r.error) { toast(r.error.message); return; }
+    items = r.data;
+    var sets = {}; items.forEach(function (it) { (sets[it.set_name] = sets[it.set_name] || []).push(it); });
+    $('setList').innerHTML = Object.keys(sets).map(function (s) { return '<option value="' + esc(s) + '">'; }).join('');
+    var total = items.reduce(function (a, it) { return a + (it.size_bytes || 0); }, 0);
+    $('fileCount').textContent = items.length + ' files · ' + fmtSize(total);
+    if (!items.length) { $('itemsWrap').innerHTML = '<p class="muted">No files yet.</p>'; return; }
+
+    var thumbKeys = items.map(function (it) { return it.thumb_key || it.poster_key; }).filter(Boolean);
+    var urls = thumbKeys.length ? await signedUrls('get', thumbKeys) : {};
+    $('itemsWrap').innerHTML = Object.keys(sets).map(function (s) {
+      return '<h3>' + esc(s) + ' <span class="muted small">(' + sets[s].length + ')</span></h3><div class="thumbs">' + sets[s].map(function (it) {
+        var k = it.thumb_key || it.poster_key;
+        var img = k && urls[k] ? '<img loading="lazy" src="' + urls[k] + '" alt="">' : '<div style="display:flex;height:100%;align-items:center;justify-content:center;font-size:11px" class="muted">' + it.kind.toUpperCase() + '</div>';
+        return '<div class="thumb" data-id="' + it.id + '">' + img +
+          (it.kind !== 'photo' ? '<span class="tag">' + it.kind + '</span>' : '') +
+          (current.cover_item_id === it.id ? '<span class="tag cover">cover</span>' : '') +
+          '<span class="name">' + esc(it.file_name) + '</span>' +
+          '<div class="acts">' + (it.kind !== 'zip' ? '<button data-act="cover">Cover</button>' : '') + '<button data-act="del">Delete</button></div></div>';
+      }).join('') + '</div>';
+    }).join('');
+    Array.prototype.forEach.call(document.querySelectorAll('.thumb button'), function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var id = b.closest('.thumb').getAttribute('data-id');
+        var it = items.find(function (x) { return x.id === id; });
+        if (b.getAttribute('data-act') === 'cover') setCover(it); else deleteItem(it);
+      });
+    });
+  }
+  async function setCover(it) { if (await patchGallery({ cover_item_id: it.id })) { toast('Cover set.'); loadItems(); } }
+  async function deleteItem(it) {
+    if (!confirm('Delete ' + it.file_name + '?')) return;
+    var keys = [it.original_key, it.web_key, it.thumb_key, it.poster_key].filter(Boolean);
+    try {
+      await sign({ action: 'delete', keys: keys });
+      var r = await sb.from('gallery_items').delete().eq('id', it.id);
+      if (r.error) throw new Error(r.error.message);
+      if (current.cover_item_id === it.id) await patchGallery({ cover_item_id: null });
+      loadItems();
+    } catch (err) { toast('Delete failed: ' + err.message); }
+  }
+
+  // ---------- upload ----------
+  function logLine(msg) { var l = $('upLog'); l.classList.remove('hidden'); l.textContent += msg + '\n'; l.scrollTop = l.scrollHeight; }
+  function putFile(url, blob, type, onProgress) {
+    return new Promise(function (resolve, reject) {
+      var x = new XMLHttpRequest();
+      x.open('PUT', url);
+      if (type) x.setRequestHeader('Content-Type', type);
+      x.upload.onprogress = function (e) { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
+      x.onload = function () { x.status >= 200 && x.status < 300 ? resolve() : reject(new Error('Upload failed (' + x.status + ')')); };
+      x.onerror = function () { reject(new Error('Network error')); };
+      x.send(blob);
+    });
+  }
+  async function resize(file, maxPx, quality) {
+    var bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    var scale = Math.min(1, maxPx / Math.max(bmp.width, bmp.height));
+    var w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(bmp, 0, 0, w, h);
+    var blob = await new Promise(function (res) { c.toBlob(res, 'image/jpeg', quality); });
+    var out = { blob: blob, width: bmp.width, height: bmp.height };
+    bmp.close && bmp.close();
+    return out;
+  }
+  function videoInfo(file) {
+    return new Promise(function (resolve) {
+      var v = document.createElement('video'); var url = URL.createObjectURL(file);
+      v.muted = true; v.preload = 'metadata'; v.src = url;
+      var done = function (blob) { URL.revokeObjectURL(url); resolve({ poster: blob, width: v.videoWidth || null, height: v.videoHeight || null }); };
+      v.onloadedmetadata = function () { v.currentTime = Math.min(2, (v.duration || 2) / 3); };
+      v.onseeked = function () {
+        try {
+          var scale = Math.min(1, 1280 / v.videoWidth);
+          var c = document.createElement('canvas'); c.width = Math.round(v.videoWidth * scale); c.height = Math.round(v.videoHeight * scale);
+          c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+          c.toBlob(function (b) { done(b); }, 'image/jpeg', 0.82);
+        } catch (e) { done(null); }
+      };
+      v.onerror = function () { done(null); };
+      setTimeout(function () { done(null); }, 15000);
+    });
+  }
+
+  $('uploadBtn').addEventListener('click', async function () {
+    var files = Array.prototype.slice.call($('fileInput').files);
+    if (!files.length) { toast('Choose files first.'); return; }
+    var set = cleanPart($('setName').value || 'Gallery');
+    var gid = current.id;
+    var btn = this; btn.disabled = true; $('upLog').textContent = '';
+    var done = 0, failed = 0, totalBytes = files.reduce(function (a, f) { return a + f.size; }, 0), sentBytes = 0;
+    var maxSort = items.filter(function (it) { return it.set_name === set; }).reduce(function (a, it) { return Math.max(a, it.sort); }, 0);
+    function bar(extra) { $('upBar').style.width = Math.min(100, ((sentBytes + (extra || 0)) / totalBytes) * 100).toFixed(1) + '%'; }
+    function status() { $('upStatus').textContent = done + ' of ' + files.length + ' done' + (failed ? ', ' + failed + ' failed' : ''); }
+    status();
+
+    async function one(file, idx) {
+      var name = cleanPart(file.name);
+      var lower = name.toLowerCase();
+      var isZip = /\.zip$/.test(lower) || file.type === 'application/zip';
+      var isVideo = !isZip && (/^video\//.test(file.type) || /\.(mp4|mov|m4v)$/.test(lower));
+      var isPhoto = !isZip && !isVideo && /^image\/(jpeg|png|webp)$/.test(file.type);
+      if (!isZip && !isVideo && !isPhoto) { logLine('Skipped ' + name + ' (unsupported type — HEIC/RAW need converting to JPG)'); failed++; return; }
+      if (file.size > 4.5 * 1024 * 1024 * 1024) { logLine('Skipped ' + name + ' — over 4.5 GB, use rclone'); failed++; return; }
+      try {
+        var row = { gallery_id: gid, set_name: set, file_name: name, size_bytes: file.size, sort: maxSort + idx + 1 };
+        var uploads = [];
+        if (isPhoto) {
+          var web = await resize(file, 2048, 0.86), thumb = await resize(file, 480, 0.8);
+          row.kind = 'photo'; row.width = web.width; row.height = web.height;
+          row.original_key = 'galleries/' + gid + '/original/' + set + '/' + name;
+          row.web_key = 'galleries/' + gid + '/web/' + set + '/' + baseName(name) + '.jpg';
+          row.thumb_key = 'galleries/' + gid + '/thumb/' + set + '/' + baseName(name) + '.jpg';
+          uploads = [[row.original_key, file, file.type], [row.web_key, web.blob, 'image/jpeg'], [row.thumb_key, thumb.blob, 'image/jpeg']];
+        } else if (isVideo) {
+          var vi = await videoInfo(file);
+          row.kind = 'video'; row.width = vi.width; row.height = vi.height;
+          row.original_key = 'galleries/' + gid + '/video/' + name;
+          uploads = [[row.original_key, file, file.type || 'video/mp4']];
+          if (vi.poster) { row.poster_key = 'galleries/' + gid + '/video/' + baseName(name) + '-poster.jpg'; uploads.push([row.poster_key, vi.poster, 'image/jpeg']); }
+        } else {
+          row.kind = 'zip'; row.set_name = 'Download all';
+          row.original_key = 'galleries/' + gid + '/zip/' + name;
+          uploads = [[row.original_key, file, 'application/zip']];
+        }
+        var urls = await signedUrls('put', uploads.map(function (u) { return u[0]; }));
+        for (var i = 0; i < uploads.length; i++) {
+          var u = uploads[i];
+          var isMain = i === 0;
+          await putFile(urls[u[0]], u[1], u[2], isMain ? function (p) { bar(p * file.size); } : null);
+        }
+        sentBytes += file.size; bar();
+        var ins = await sb.from('gallery_items').insert(row);
+        if (ins.error) throw new Error(ins.error.message);
+        done++; status();
+      } catch (err) {
+        failed++; status(); logLine('FAILED ' + name + ': ' + err.message);
+      }
+    }
+
+    // Photos 3 at a time; films/ZIPs one at a time.
+    var small = files.filter(function (f) { return /^image\//.test(f.type); });
+    var big = files.filter(function (f) { return !/^image\//.test(f.type); });
+    var queue = small.map(function (f) { return [f, files.indexOf(f)]; });
+    async function worker() { while (queue.length) { var job = queue.shift(); await one(job[0], job[1]); } }
+    await Promise.all([worker(), worker(), worker()]);
+    for (var b = 0; b < big.length; b++) await one(big[b], files.indexOf(big[b]));
+
+    btn.disabled = false; $('fileInput').value = '';
+    logLine('Finished: ' + done + ' uploaded' + (failed ? ', ' + failed + ' failed — choose them again to retry' : '') + '.');
+    toast('Upload finished.');
+    loadItems();
+  });
+
+  $('regBtn').addEventListener('click', async function () {
+    var key = $('regKey').value.trim(), kind = $('regKind').value;
+    if (key.indexOf('galleries/' + current.id + '/') !== 0) { toast('Path must start with galleries/' + current.id + '/'); return; }
+    var name = key.split('/').pop();
+    var r = await sb.from('gallery_items').insert({ gallery_id: current.id, set_name: kind === 'zip' ? 'Download all' : 'Films', kind: kind, original_key: key, file_name: name });
+    if (r.error) { toast(r.error.message); return; }
+    $('regKey').value = ''; toast('Registered.'); loadItems();
+  });
+
+  // ---------- favourites & activity ----------
+  async function loadFavs() {
+    var r = await sb.from('gallery_favourites').select('client_email, created_at, gallery_items(file_name, set_name)').eq('gallery_id', current.id).order('created_at');
+    if (r.error || !r.data.length) { $('favWrap').innerHTML = '<span class="muted">None yet.</span>'; return; }
+    var by = {};
+    r.data.forEach(function (f) { if (f.gallery_items) (by[f.client_email] = by[f.client_email] || []).push(f.gallery_items.file_name); });
+    $('favWrap').innerHTML = Object.keys(by).map(function (email, i) {
+      return '<div style="margin-bottom:12px"><strong>' + esc(email) + '</strong> · ' + by[email].length + ' favourites <button class="btn" style="padding:3px 8px;font-size:11px" data-fav="' + i + '">Copy file names</button><div class="small muted" style="margin-top:4px">' + by[email].map(esc).join(', ') + '</div></div>';
+    }).join('');
+    var lists = Object.keys(by).map(function (e) { return by[e]; });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-fav]'), function (b) {
+      b.addEventListener('click', async function () {
+        var names = lists[+b.getAttribute('data-fav')].map(baseName).join(' ');
+        await navigator.clipboard.writeText(names); toast('Copied. In Lightroom: Library filter → Text → Filename → Contains, then paste.');
+      });
+    });
+  }
+  async function loadActivity() {
+    var r = await sb.from('gallery_access_log').select('event, created_at, detail').eq('gallery_id', current.id).order('created_at', { ascending: false }).limit(500);
+    if (r.error || !r.data.length) { $('activityWrap').textContent = 'No activity yet.'; return; }
+    var c = {}; r.data.forEach(function (x) { c[x.event] = (c[x.event] || 0) + 1; });
+    var last = r.data.find(function (x) { return x.event === 'pin_ok'; });
+    $('activityWrap').innerHTML = 'Opened ' + (c.pin_ok || 0) + ' times' + (last ? ' (last ' + new Date(last.created_at).toLocaleString('en-GB') + ')' : '') +
+      ' · ' + (c.download || 0) + ' single downloads · ' + (c.download_all || 0) + ' “download all” · ' + (c.pin_fail || 0) + ' wrong PINs';
+  }
+
+  sb.auth.onAuthStateChange(function () { refreshSession(); });
+  refreshSession().then(function (ok) { if (ok) loadList(); });
+})();
+</script>
+</body>
+</html>
