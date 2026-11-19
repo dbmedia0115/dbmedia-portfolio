@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /admin.html
 Disallow: /gallery.html
 Disallow: /gallery-admin.html
 Disallow: /blog-admin.html
