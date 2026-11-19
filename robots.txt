@@ -2,5 +2,8 @@ User-agent: *
 Allow: /
 Disallow: /gallery.html
 Disallow: /gallery-admin.html
+Disallow: /blog-admin.html
+Disallow: /api/
 
 Sitemap: https://www.dreambigmedia.co.uk/sitemap.xml
+Sitemap: https://www.dreambigmedia.co.uk/blog-sitemap.xml
