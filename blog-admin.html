@@ -183,6 +183,8 @@
 
   // ---------- list ----------
   async function loadList() {
+    // Tidy away empty drafts left behind by tapping "New post" and backing out.
+    await sb.from('blog_posts').delete().eq('status', 'draft').eq('title', 'New post').eq('body', '').eq('images', '[]').is('excerpt', null);
     var r = await sb.from('blog_posts').select('id, slug, title, status, event_date, published_at, updated_at').order('updated_at', { ascending: false });
     if (r.error) { $('postRows').innerHTML = '<li>' + esc(r.error.message) + '</li>'; return; }
     posts = r.data;
