@@ -1,0 +1,337 @@
+line one
+  <div class="x">"quotes" & stuff</div>
+line three<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Your Gallery | Dream Big Media</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap');
+  :root { --ink:#0a0a0a; --paper:#f5f5f0; --accent:#8c1d18; --line:#d8d6cf; --muted:#6b6a64; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; }
+  h1, h2 { font-family:'Archivo Black',sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:.01em; }
+  a { color:inherit; }
+  .brand { font-family:'Archivo Black',sans-serif; text-transform:uppercase; font-size:14px; letter-spacing:.06em; text-decoration:none; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1.5px solid var(--ink); background:#fff; color:var(--ink); padding:11px 18px; font:600 14px 'Inter',sans-serif; cursor:pointer; text-decoration:none; }
+  .btn:hover { background:var(--ink); color:var(--paper); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover { background:#6e1612; }
+  .hidden { display:none !important; }
+
+  /* Gate (PIN) */
+  #gate { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
+  #gate .box { width:100%; max-width:380px; border:1.5px solid var(--ink); background:#fff; padding:32px 26px; }
+  #gate h1 { font-size:22px; margin:14px 0 6px; }
+  #gate p { color:var(--muted); font-size:14px; line-height:1.5; }
+  #pin { width:100%; margin:20px 0 12px; padding:14px; font:700 28px ui-monospace,Consolas,monospace; letter-spacing:.4em; text-align:center; border:1.5px solid var(--ink); }
+  #gateMsg { min-height:20px; font-size:13px; color:var(--accent); margin-bottom:10px; }
+
+  /* Gallery */
+  .hero { position:relative; height:72vh; min-height:360px; background:#111 center/cover no-repeat; display:flex; align-items:flex-end; color:#fff; }
+  .hero::after { content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.65), rgba(0,0,0,0) 55%); }
+  .hero .inner { position:relative; z-index:1; padding:32px 24px; max-width:1200px; width:100%; margin:0 auto; }
+  .hero h1 { font-size:clamp(26px,5vw,52px); line-height:1.05; }
+  .hero p { margin-top:8px; opacity:.85; font-size:14px; }
+  .bar { position:sticky; top:0; z-index:5; background:rgba(245,245,240,.96); backdrop-filter:blur(6px); border-bottom:1.5px solid var(--ink); }
+  .bar .inner { max-width:1200px; margin:0 auto; padding:10px 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .tabs { display:flex; gap:6px; overflow-x:auto; flex:1; scrollbar-width:none; }
+  .tab { white-space:nowrap; padding:7px 12px; border:1.5px solid transparent; background:none; font:600 13px 'Inter',sans-serif; cursor:pointer; color:var(--ink); }
+  .tab.on { border-color:var(--ink); background:#fff; }
+  .note { max-width:1200px; margin:14px auto 0; padding:0 16px; font-size:13px; color:var(--muted); }
+  .note strong { color:var(--accent); }
+  section.set { max-width:1200px; margin:0 auto; padding:26px 16px 8px; }
+  section.set h2 { font-size:18px; margin-bottom:14px; }
+  .grid { columns:3 280px; column-gap:10px; }
+  .tile { break-inside:avoid; margin-bottom:10px; position:relative; cursor:zoom-in; background:#e6e4dd; }
+  .tile img { width:100%; display:block; }
+  .tile .play { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+  .tile .play span { width:64px; height:64px; border-radius:50%; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; }
+  .tile .play span::after { content:''; border-left:20px solid #fff; border-top:12px solid transparent; border-bottom:12px solid transparent; margin-left:5px; }
+  .tile .heart { position:absolute; right:8px; top:8px; }
+  .heart { width:36px; height:36px; border-radius:50%; border:0; background:rgba(255,255,255,.9); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .heart svg { width:18px; height:18px; fill:none; stroke:var(--ink); stroke-width:2; }
+  .heart.on svg { fill:var(--accent); stroke:var(--accent); }
+  .empty { text-align:center; color:var(--muted); padding:40px 16px; }
+  footer { text-align:center; padding:40px 16px 60px; color:var(--muted); font-size:12px; }
+
+  /* Lightbox */
+  #lb { position:fixed; inset:0; background:rgba(8,8,8,.97); z-index:30; display:flex; flex-direction:column; }
+  #lb .top { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; color:#fff; gap:10px; }
+  #lb .top .name { font-size:12px; opacity:.7; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #lb .top .acts { display:flex; gap:8px; align-items:center; }
+  #lb .stage { flex:1; display:flex; align-items:center; justify-content:center; position:relative; min-height:0; touch-action:pan-y; }
+  #lb img, #lb video { max-width:100%; max-height:100%; object-fit:contain; }
+  #lb .nav { position:absolute; top:50%; transform:translateY(-50%); width:48px; height:72px; border:0; background:rgba(255,255,255,.08); color:#fff; font-size:28px; cursor:pointer; }
+  #lb .prev { left:6px; } #lb .next { right:6px; }
+  .iconbtn { border:1.5px solid rgba(255,255,255,.5); background:none; color:#fff; padding:8px 12px; font:600 13px 'Inter',sans-serif; cursor:pointer; }
+  .iconbtn:hover { background:#fff; color:var(--ink); }
+
+  /* Email dialog */
+  #emailDlg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:40; display:flex; align-items:center; justify-content:center; padding:20px; }
+  #emailDlg .box { background:#fff; border:1.5px solid var(--ink); padding:24px; max-width:380px; width:100%; }
+  #emailDlg h2 { font-size:17px; margin-bottom:8px; }
+  #emailDlg p { font-size:13px; color:var(--muted); line-height:1.5; }
+  #emailDlg input { width:100%; padding:11px; border:1.5px solid var(--ink); font:15px 'Inter',sans-serif; margin:14px 0; }
+  #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:11px 16px; font-size:13px; z-index:50; display:none; max-width:90vw; text-align:center; }
+  @media (max-width:600px) { .grid { columns:2 140px; column-gap:6px; } .tile { margin-bottom:6px; } .hero { height:56vh; } #lb .nav { display:none; } }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <a class="brand" href="/">Dream Big Media</a>
+  <div class="box">
+    <h1 id="gateTitle">Your gallery</h1>
+    <p id="gateText">Enter the PIN from your email to view your photos and films.</p>
+    <form id="pinForm">
+      <input id="pin" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="8" placeholder="••••" aria-label="Gallery PIN">
+      <div id="gateMsg"></div>
+      <button class="btn primary" style="width:100%" type="submit" id="pinBtn">View gallery</button>
+    </form>
+  </div>
+  <p style="margin-top:18px;font-size:12px;color:var(--muted)">Lost your PIN? <a href="/#contact">Contact Dream Big Media</a></p>
+</div>
+
+<div id="app" class="hidden">
+  <div class="hero" id="hero"><div class="inner"><a class="brand" href="/" style="color:#fff">Dream Big Media</a><h1 id="gTitle"></h1><p id="gSub"></p></div></div>
+  <div class="bar"><div class="inner">
+    <div class="tabs" id="tabs"></div>
+    <button class="btn" id="favFilter" style="padding:7px 12px">♡ Favourites</button>
+    <button class="btn primary hidden" id="dlAll" style="padding:7px 12px">Download all</button>
+  </div></div>
+  <div class="note" id="note"></div>
+  <div id="sets"></div>
+  <footer>Photos &amp; films by <a href="/">Dream Big Media</a> · Nottingham</footer>
+</div>
+
+<div id="lb" class="hidden">
+  <div class="top">
+    <span class="name" id="lbName"></span>
+    <div class="acts">
+      <button class="heart" id="lbHeart" aria-label="Favourite"><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8.2 3.4 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.6 0 6 3.7 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg></button>
+      <button class="iconbtn" id="lbDl">Download</button>
+      <button class="iconbtn" id="lbClose" aria-label="Close">✕</button>
+    </div>
+  </div>
+  <div class="stage" id="lbStage">
+    <button class="nav prev" id="lbPrev" aria-label="Previous">‹</button>
+    <div id="lbMedia" style="display:contents"></div>
+    <button class="nav next" id="lbNext" aria-label="Next">›</button>
+  </div>
+</div>
+
+<div id="emailDlg" class="hidden">
+  <form class="box" id="emailForm">
+    <h2>Save your favourites</h2>
+    <p>Enter your email so your hearts are saved and Samuel can see which images you love (for prints, albums or edits).</p>
+    <input type="email" id="emailInput" placeholder="you@email.com" required autocomplete="email">
+    <div style="display:flex;gap:8px"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" id="emailCancel">Cancel</button></div>
+  </form>
+</div>
+<div id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+(function () {
+  var FN = SUPABASE_URL + '/functions/v1/gallery';
+  var slug = new URLSearchParams(location.search).get('g') || '';
+  var KEY = 'dbm_gallery_' + slug;
+  var data = null, flat = [], favs = {}, email = '', showFavsOnly = false, lbIndex = -1, pendingFav = null, refreshTimer = null;
+  var HEART = '<svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8.2 3.4 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.6 0 6 3.7 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>';
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function toast(m) { var t = $('toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, 3500); }
+  function store(k, v) { try { v == null ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) {} }
+  function read(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function readLocal(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function storeLocal(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function fmtDate(d) { return new Date(d + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }); }
+
+  async function call(body) {
+    var res = await fetch(FN, { method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_PUBLISHABLE_KEY }, body: JSON.stringify(body) });
+    var out = await res.json().catch(function () { return { error: 'server_error' }; });
+    out._status = res.status;
+    return out;
+  }
+
+  function gateError(msg) { $('gateMsg').textContent = msg; }
+  function showExpired() {
+    $('gateTitle').textContent = 'This gallery has expired';
+    $('gateText').innerHTML = 'Galleries are available for 90 days and then permanently deleted. If you still need your files, please <a href="/#contact">get in touch</a>.';
+    $('pinForm').classList.add('hidden');
+  }
+
+  // ---------- open ----------
+  if (!/^[0-9a-f]{16}$/.test(slug)) {
+    $('gateTitle').textContent = 'Gallery not found';
+    $('gateText').textContent = 'Please use the link from your email.';
+    $('pinForm').classList.add('hidden');
+  } else {
+    var saved = read(KEY);
+    if (saved) resume(saved); else $('pin').focus();
+  }
+
+  async function resume(token) {
+    var d = await call({ action: 'resume', slug: slug, token: token });
+    if (d.error) { store(KEY, null); if (d._status === 410) showExpired(); else { $('pin').focus(); } return; }
+    start(d);
+  }
+
+  $('pinForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var pin = $('pin').value.replace(/\D/g, '');
+    if (pin.length < 4) { gateError('Enter the 4-digit PIN from your email.'); return; }
+    $('pinBtn').disabled = true; gateError('');
+    var d = await call({ action: 'open', slug: slug, pin: pin });
+    $('pinBtn').disabled = false;
+    if (d.error === 'wrong_pin') { gateError('That PIN isn’t right.' + (d.attemptsLeft <= 2 ? ' ' + d.attemptsLeft + ' tries left.' : '')); $('pin').select(); return; }
+    if (d.error === 'locked') { gateError('Too many tries. Please wait ' + d.minutes + ' minutes and try again.'); return; }
+    if (d.error === 'expired') { showExpired(); return; }
+    if (d.error === 'not_found') { gateError('This gallery isn’t available. Check the link in your email.'); return; }
+    if (d.error) { gateError('Something went wrong. Please try again.'); return; }
+    start(d);
+  });
+
+  function start(d) {
+    data = d; store(KEY, d.token);
+    email = readLocal('dbm_gallery_email') || '';
+    $('gate').classList.add('hidden'); $('app').classList.remove('hidden');
+    document.title = d.title + ' | Dream Big Media';
+    render();
+    if (email) loadFavs();
+    clearInterval(refreshTimer);
+    // Viewing links last an hour; refresh them quietly every 45 minutes.
+    refreshTimer = setInterval(function () { call({ action: 'resume', slug: slug, token: data.token }).then(function (n) { if (!n.error) { data = n; render(true); } }); }, 45 * 60 * 1000);
+  }
+
+  // ---------- render ----------
+  function render(keepScroll) {
+    var y = window.scrollY;
+    if (data.cover) $('hero').style.backgroundImage = 'url("' + data.cover + '")';
+    $('gTitle').textContent = data.title;
+    var count = data.sets.reduce(function (a, s) { return a + s.items.length; }, 0);
+    $('gSub').textContent = (data.clientName ? 'For ' + data.clientName + ' · ' : '') + count + ' photos & films';
+    $('note').innerHTML = data.expiresAt ? 'Available until <strong>' + fmtDate(data.expiresAt) + '</strong>. Please download everything you want to keep before then — files are permanently deleted after this date.' : '';
+    $('dlAll').classList.toggle('hidden', !(data.zips && data.zips.length && data.allowDownloads));
+    $('lbDl').classList.toggle('hidden', !data.allowDownloads);
+
+    flat = [];
+    $('tabs').innerHTML = '<button class="tab on" data-set="">All</button>' + data.sets.map(function (s, i) { return '<button class="tab" data-set="' + i + '">' + esc(s.name) + '</button>'; }).join('');
+    var html = data.sets.map(function (s, si) {
+      var tiles = s.items.filter(function (it) { return !showFavsOnly || favs[it.id]; }).map(function (it) {
+        var idx = flat.push(it) - 1;
+        var ratio = it.width && it.height ? ' style="aspect-ratio:' + it.width + '/' + it.height + '"' : '';
+        return '<div class="tile" data-i="' + idx + '"' + ratio + '>' +
+          (it.thumb ? '<img loading="lazy" decoding="async" src="' + esc(it.thumb) + '" alt="">' : '') +
+          (it.kind === 'video' ? '<div class="play"><span></span></div>' : '') +
+          '<button class="heart' + (favs[it.id] ? ' on' : '') + '" data-fav="' + it.id + '" aria-label="Favourite">' + HEART + '</button></div>';
+      }).join('');
+      if (!tiles) return '';
+      return '<section class="set" id="set-' + si + '"><h2>' + esc(s.name) + '</h2><div class="grid">' + tiles + '</div></section>';
+    }).join('');
+    $('sets').innerHTML = html || '<p class="empty">' + (showFavsOnly ? 'No favourites yet — tap the heart on any photo.' : 'This gallery is empty.') + '</p>';
+    if (keepScroll) window.scrollTo(0, y);
+  }
+
+  $('sets').addEventListener('click', function (e) {
+    var h = e.target.closest('[data-fav]');
+    if (h) { e.stopPropagation(); toggleFav(h.getAttribute('data-fav')); return; }
+    var t = e.target.closest('.tile');
+    if (t) openLb(+t.getAttribute('data-i'));
+  });
+  $('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('.tab'); if (!b) return;
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (x) { x.classList.toggle('on', x === b); });
+    var s = b.getAttribute('data-set');
+    var target = s === '' ? $('sets') : $('set-' + s);
+    if (target) window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - 70, behavior: 'smooth' });
+  });
+  $('favFilter').addEventListener('click', function () {
+    showFavsOnly = !showFavsOnly;
+    this.textContent = showFavsOnly ? '♥ Showing favourites' : '♡ Favourites';
+    this.classList.toggle('primary', showFavsOnly);
+    render();
+  });
+
+  // ---------- favourites ----------
+  async function loadFavs() {
+    var d = await call({ action: 'favourites', token: data.token, email: email });
+    if (!d.error) { favs = {}; d.itemIds.forEach(function (id) { favs[id] = true; }); render(true); }
+  }
+  async function toggleFav(id) {
+    if (!email) { pendingFav = id; $('emailDlg').classList.remove('hidden'); $('emailInput').focus(); return; }
+    var on = !favs[id];
+    favs[id] = on; if (!on) delete favs[id];
+    syncHearts(id);
+    var d = await call({ action: 'favourite', token: data.token, itemId: id, email: email, on: on });
+    if (d.error) { toast(d.error === 'session_ended' ? 'Your session ended — refresh the page.' : 'Couldn’t save that heart. Try again.'); if (on) delete favs[id]; else favs[id] = true; syncHearts(id); return; }
+    favs = {}; d.itemIds.forEach(function (x) { favs[x] = true; });
+    if (showFavsOnly && !on) render(true);
+  }
+  function syncHearts(id) {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-fav="' + id + '"]'), function (b) { b.classList.toggle('on', !!favs[id]); });
+    if (lbIndex >= 0 && flat[lbIndex] && flat[lbIndex].id === id) $('lbHeart').classList.toggle('on', !!favs[id]);
+  }
+  $('emailForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    email = $('emailInput').value.trim().toLowerCase();
+    storeLocal('dbm_gallery_email', email);
+    $('emailDlg').classList.add('hidden');
+    var id = pendingFav; pendingFav = null;
+    loadFavs().then(function () { if (id && !favs[id]) toggleFav(id); });
+  });
+  $('emailCancel').addEventListener('click', function () { pendingFav = null; $('emailDlg').classList.add('hidden'); });
+
+  // ---------- downloads ----------
+  async function download(itemId) {
+    toast('Preparing download…');
+    var d = await call({ action: 'download', token: data.token, itemId: itemId });
+    if (d.error) { toast(d.error === 'session_ended' ? 'Your session ended — refresh the page and enter your PIN.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return; }
+    var a = document.createElement('a'); a.href = d.url; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+  }
+  $('dlAll').addEventListener('click', function () { if (data.zips[0]) download(data.zips[0].id); });
+  $('lbDl').addEventListener('click', function () { if (flat[lbIndex]) download(flat[lbIndex].id); });
+
+  // ---------- lightbox ----------
+  function openLb(i) {
+    lbIndex = i; var it = flat[i]; if (!it) return;
+    $('lb').classList.remove('hidden'); document.body.style.overflow = 'hidden';
+    $('lbName').textContent = it.fileName;
+    $('lbHeart').classList.toggle('on', !!favs[it.id]);
+    if (it.kind === 'video') {
+      $('lbMedia').innerHTML = '<video controls playsinline preload="metadata"' + (it.poster ? ' poster="' + esc(it.poster) + '"' : '') + ' src="' + esc(it.video) + '"></video>';
+    } else {
+      $('lbMedia').innerHTML = '<img src="' + esc(it.web || it.thumb) + '" alt="">';
+      if (flat[i + 1] && flat[i + 1].web) { var pre = new Image(); pre.src = flat[i + 1].web; }
+    }
+    $('lbPrev').style.visibility = i > 0 ? 'visible' : 'hidden';
+    $('lbNext').style.visibility = i < flat.length - 1 ? 'visible' : 'hidden';
+  }
+  function closeLb() { $('lb').classList.add('hidden'); $('lbMedia').innerHTML = ''; document.body.style.overflow = ''; lbIndex = -1; }
+  $('lbClose').addEventListener('click', closeLb);
+  $('lbPrev').addEventListener('click', function () { if (lbIndex > 0) openLb(lbIndex - 1); });
+  $('lbNext').addEventListener('click', function () { if (lbIndex < flat.length - 1) openLb(lbIndex + 1); });
+  $('lbHeart').addEventListener('click', function () { if (flat[lbIndex]) toggleFav(flat[lbIndex].id); });
+  document.addEventListener('keydown', function (e) {
+    if (lbIndex < 0) return;
+    if (e.key === 'Escape') closeLb();
+    if (e.key === 'ArrowLeft' && lbIndex > 0) openLb(lbIndex - 1);
+    if (e.key === 'ArrowRight' && lbIndex < flat.length - 1) openLb(lbIndex + 1);
+  });
+  var sx = null;
+  $('lbStage').addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
+  $('lbStage').addEventListener('touchend', function (e) {
+    if (sx == null) return; var dx = e.changedTouches[0].clientX - sx; sx = null;
+    if (Math.abs(dx) > 50) { if (dx < 0 && lbIndex < flat.length - 1) openLb(lbIndex + 1); else if (dx > 0 && lbIndex > 0) openLb(lbIndex - 1); }
+  });
+})();
+</script>
+</body>
+</html>
