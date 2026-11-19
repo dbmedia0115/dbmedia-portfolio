@@ -51,6 +51,9 @@
   .log { font:12px ui-monospace,Consolas,monospace; max-height:140px; overflow:auto; background:#faf9f5; border:1px solid var(--line); padding:8px; margin-top:8px; white-space:pre-wrap; }
   .notice { padding:12px 14px; border-left:4px solid var(--accent); background:#fff; margin:12px 0; }
   .pinbox { font:700 32px ui-monospace,Consolas,monospace; letter-spacing:.3em; }
+  .inbox { align-items:start; gap:16px; } .inbox .card { margin-bottom:0; }
+  .inbox-item { border-top:1px solid var(--line); padding:12px 0; } .inbox-item:first-child { border-top:0; padding-top:0; }
+  .inbox-item table td { padding:3px 8px 3px 0; border:0; } .inbox-item .btn { padding:6px 10px; font-size:12px; } .inbox-item select { padding:6px 8px; font-size:12px; }
   .hidden { display:none !important; }
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; font-size:13px; display:none; z-index:20; }
   @media (max-width:700px) { .grid2 { grid-template-columns:1fr; } main { padding:14px; } }
@@ -97,6 +100,11 @@
         <thead><tr><th>Gallery</th><th>Client</th><th>Status</th><th>Expires</th><th>Files</th></tr></thead>
         <tbody id="galleryRows"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
       </table>
+    </div>
+    <div class="row" style="justify-content:space-between;margin:26px 0 10px"><h2 style="margin:0">Inbox</h2><span class="small muted" id="inboxCount"></span></div>
+    <div class="grid2 inbox">
+      <div class="card"><h3 style="margin-top:0">Print requests</h3><div id="printList"><p class="muted small">Loading…</p></div></div>
+      <div class="card"><h3 style="margin-top:0">Reviews</h3><div id="reviewList"><p class="muted small">Loading…</p></div></div>
     </div>
   </section>
 
@@ -211,7 +219,7 @@
     $('loginMsg').textContent = 'Logging in…';
     var r = await sb.auth.signInWithPassword({ email: $('loginEmail').value.trim(), password: $('loginPassword').value });
     $('loginMsg').textContent = r.error ? r.error.message : '';
-    if (!r.error && await refreshSession()) { loadList(); cleanupIfDue(); }
+    if (!r.error && await refreshSession()) { loadList(); loadInbox(); cleanupIfDue(); }
   });
   $('logoutBtn').addEventListener('click', async function () { await sb.auth.signOut(); current = null; refreshSession(); });
 
@@ -272,7 +280,7 @@
     loadFavs(); loadActivity();
     window.scrollTo(0, 0);
   }
-  $('backBtn').addEventListener('click', function () { current = null; show('detailView', false); show('listView', true); loadList(); });
+  $('backBtn').addEventListener('click', function () { current = null; show('detailView', false); show('listView', true); loadList(); loadInbox(); });
 
   function renderHeader() {
     var g = current;
@@ -557,6 +565,75 @@
       ' · ' + (c.download || 0) + ' single downloads · ' + (c.download_all || 0) + ' “download all” · ' + (c.pin_fail || 0) + ' wrong PINs';
   }
 
+  // ---------- inbox: print requests & reviews ----------
+  var STATUS = { new: 'New', quoted: 'Quote sent', paid: 'Paid', done: 'Delivered', cancelled: 'Cancelled' };
+  function stars(n) { return '<span style="color:#e0a500;letter-spacing:2px">' + '★'.repeat(n) + '</span><span style="color:#d0cec7;letter-spacing:2px">' + '★'.repeat(5 - n) + '</span>'; }
+  function when(ts) { return new Date(ts).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+  // Testimonials on the homepage are shown as HTML, so never let < or > through.
+  function plainText(s) { return String(s || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim(); }
+  var prints = [], reviews = [];
+  async function loadInbox() {
+    var p = await sb.from('print_requests').select('*').order('created_at', { ascending: false }).limit(100);
+    var r = await sb.from('gallery_reviews').select('*').order('created_at', { ascending: false }).limit(100);
+    prints = p.data || []; reviews = r.data || [];
+    var open = prints.filter(function (x) { return x.status === 'new' || x.status === 'quoted' || x.status === 'paid'; }).length;
+    var fresh = reviews.filter(function (x) { return !x.added_to_site; }).length;
+    $('inboxCount').textContent = (open ? open + ' print request' + (open === 1 ? '' : 's') + ' open' : 'No open print requests') + ' · ' + reviews.length + ' review' + (reviews.length === 1 ? '' : 's');
+    $('printList').innerHTML = prints.length ? prints.map(function (x) {
+      var total = (x.items || []).reduce(function (a, i) { return a + (i.qty || 1); }, 0);
+      var body = 'Hi ' + x.client_name.split(' ')[0] + ',\n\nThanks for your print request (ref ' + x.ref + ').\n\n' +
+        (x.items || []).map(function (i) { return i.qty + ' x ' + i.size + ' ' + i.product + ' (' + i.fileName + ')'; }).join('\n') +
+        '\n\nTotal: £\n\nI’ll send a proof before printing. You can pay by bank transfer or card.\n\nThanks,\nSamuel\nDream Big Media';
+      var mail = 'mailto:' + encodeURIComponent(x.client_email) + '?subject=' + encodeURIComponent('Your print quote (' + x.ref + ') — Dream Big Media') + '&body=' + encodeURIComponent(body);
+      return '<div class="inbox-item" data-id="' + x.id + '">' +
+        '<div class="row" style="justify-content:space-between"><strong>' + esc(x.ref) + ' · ' + esc(x.client_name) + '</strong><span class="small muted">' + when(x.created_at) + '</span></div>' +
+        '<div class="small muted" style="margin:3px 0 8px">' + esc(x.gallery_title || 'Deleted gallery') + ' · <a href="mailto:' + esc(x.client_email) + '">' + esc(x.client_email) + '</a>' + (x.phone ? ' · ' + esc(x.phone) : '') + '</div>' +
+        '<table class="small"><tbody>' + (x.items || []).map(function (i) { return '<tr><td>' + i.qty + ' ×</td><td>' + esc(i.size) + '</td><td>' + esc(i.product) + '</td><td>' + esc(i.fileName) + '</td></tr>'; }).join('') + '</tbody></table>' +
+        (x.notes ? '<p class="small" style="margin-top:8px"><b>Notes:</b> ' + esc(x.notes) + '</p>' : '') +
+        '<div class="row" style="margin-top:10px"><select data-status style="width:auto">' + Object.keys(STATUS).map(function (k) { return '<option value="' + k + '"' + (k === x.status ? ' selected' : '') + '>' + STATUS[k] + '</option>'; }).join('') + '</select>' +
+        '<a class="btn" href="' + esc(mail) + '">Email quote</a><button class="btn" data-copyfiles>Copy file names</button><span class="small muted">' + total + ' print' + (total === 1 ? '' : 's') + '</span></div></div>';
+    }).join('') : '<p class="muted small">Print requests from client galleries will appear here.</p>';
+    $('reviewList').innerHTML = reviews.length ? reviews.map(function (x) {
+      return '<div class="inbox-item" data-id="' + x.id + '">' +
+        '<div class="row" style="justify-content:space-between"><span>' + stars(x.rating) + ' <strong>' + esc(x.client_name) + '</strong></span><span class="small muted">' + when(x.created_at) + '</span></div>' +
+        '<div class="small muted" style="margin:3px 0 8px">' + esc(x.gallery_title || 'Deleted gallery') + ' · ' + esc(x.client_email) + ' · ' + (x.can_publish ? 'OK to show on website' : 'Private, not for the website') + '</div>' +
+        '<p>“' + esc(x.body) + '”</p>' +
+        '<div class="row" style="margin-top:10px">' +
+        (x.added_to_site ? '<span class="pill live">On your website</span>' : x.can_publish ? '<button class="btn primary" data-publish>Add to website testimonials</button>' : '') +
+        '<button class="btn" data-copyreview>Copy text</button><button class="btn danger" data-delreview>Delete</button></div></div>';
+    }).join('') : '<p class="muted small">Reviews from client galleries will appear here.</p>';
+  }
+  $('printList').addEventListener('change', async function (e) {
+    if (!e.target.hasAttribute('data-status')) return;
+    var id = e.target.closest('.inbox-item').getAttribute('data-id');
+    var r = await sb.from('print_requests').update({ status: e.target.value }).eq('id', id);
+    toast(r.error ? r.error.message : 'Marked as ' + STATUS[e.target.value] + '.'); loadInbox();
+  });
+  $('printList').addEventListener('click', async function (e) {
+    if (!e.target.closest('[data-copyfiles]')) return;
+    var x = prints.find(function (p) { return p.id === e.target.closest('.inbox-item').getAttribute('data-id'); });
+    var names = (x.items || []).map(function (i) { return baseName(i.fileName); });
+    await navigator.clipboard.writeText(names.join(', ')); toast('Copied. Paste into Lightroom’s filename search.');
+  });
+  $('reviewList').addEventListener('click', async function (e) {
+    var item = e.target.closest('.inbox-item'); if (!item) return;
+    var x = reviews.find(function (r) { return r.id === item.getAttribute('data-id'); }); if (!x) return;
+    if (e.target.closest('[data-copyreview]')) { await navigator.clipboard.writeText(x.body); toast('Review copied.'); return; }
+    if (e.target.closest('[data-delreview]')) {
+      if (!confirm('Delete this review from ' + x.client_name + '? (It stays on your website if you already added it.)')) return;
+      var d = await sb.from('gallery_reviews').delete().eq('id', x.id); toast(d.error ? d.error.message : 'Review deleted.'); loadInbox(); return;
+    }
+    if (e.target.closest('[data-publish]')) {
+      if (!x.can_publish) return;
+      var t = await sb.from('testimonials').select('display_order').order('display_order', { ascending: false }).limit(1);
+      var order = t.data && t.data[0] ? (t.data[0].display_order || 0) + 1 : 0;
+      var ins = await sb.from('testimonials').insert({ client_name: plainText(x.client_name).split(' ')[0].slice(0, 40) || 'Client', quote: plainText(x.body).slice(0, 600), rating: x.rating, display_order: order });
+      if (ins.error) { toast('Could not add: ' + ins.error.message); return; }
+      await sb.from('gallery_reviews').update({ added_to_site: true }).eq('id', x.id);
+      toast('Added to your homepage testimonials. Reorder or edit them from the homepage admin bar.'); loadInbox();
+    }
+  });
+
   // ---------- cleanup (also run by the nightly GitHub job) ----------
   async function runCleanup(manual) {
     var r = await sb.auth.getSession(); session = r.data.session;
@@ -586,7 +663,7 @@
   }
 
   sb.auth.onAuthStateChange(function () { refreshSession(); });
-  refreshSession().then(function (ok) { if (ok) { loadList(); cleanupIfDue(); } });
+  refreshSession().then(function (ok) { if (ok) { loadList(); loadInbox(); cleanupIfDue(); } });
 })();
 </script>
 </body>
