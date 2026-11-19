@@ -1,0 +1,39 @@
+name: Gallery Cleanup
+
+# Runs every night. Deletes client galleries 90 days after delivery (the expiry
+# date shown in the admin page), clears old sessions, and emails
+# db.media0115@gmail.com about galleries expiring in 7 days.
+#
+# This job only FAILS when something is wrong, and GitHub emails you when a job
+# fails, so you only hear about it if it needs attention.
+#
+# Needs one repository secret: GALLERY_CLEANUP_SECRET (same value as the
+# CLEANUP_SECRET in Supabase > Edge Functions > Secrets).
+
+on:
+  schedule:
+    - cron: "23 3 * * *"     # 03:23 UTC every day
+  workflow_dispatch:          # lets you run it by hand from the Actions tab
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete expired galleries
+        env:
+          CLEANUP_SECRET: ${{ secrets.GALLERY_CLEANUP_SECRET }}
+        run: |
+          if [ -z "$CLEANUP_SECRET" ]; then
+            echo "The GALLERY_CLEANUP_SECRET repository secret is missing."
+            exit 1
+          fi
+          code=$(curl -sS -o result.json -w "%{http_code}" -X POST \
+            "https://dktuxcqjrvpzhtcvhjvl.supabase.co/functions/v1/gallery-cleanup" \
+            -H "x-cleanup-secret: $CLEANUP_SECRET" \
+            -H "apikey: sb_publishable_v06XMnd_nvUi-tzA_eviug_M4KEobnk")
+          cat result.json; echo
+          if [ "$code" != "200" ]; then
+            echo "Cleanup failed with HTTP $code"
+            exit 1
+          fi
+          grep -q '"ok": true' result.json
