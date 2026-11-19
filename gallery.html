@@ -71,6 +71,13 @@
   .iconbtn:hover { background:#fff; color:var(--ink); }
 
   /* Email dialog */
+  #dlDlg { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:45; display:flex; align-items:center; justify-content:center; padding:20px; }
+  #dlDlg .box { background:#fff; border:1.5px solid var(--ink); padding:24px; max-width:420px; width:100%; max-height:90vh; overflow:auto; }
+  #dlDlg h2 { font-size:17px; margin-bottom:6px; } #dlDlg p { font-size:13px; color:var(--muted); line-height:1.5; margin-bottom:12px; }
+  #dlDlg .opt { display:flex; gap:10px; align-items:flex-start; border:1.5px solid var(--line, #d8d6cf); padding:11px 12px; margin-bottom:8px; cursor:pointer; font-size:14px; }
+  #dlDlg .opt input { margin-top:3px; } #dlDlg .opt small { display:block; color:var(--muted); font-size:12px; margin-top:2px; }
+  #dlDlg .prog { height:8px; background:#e6e4dd; margin:14px 0 6px; } #dlDlg .prog div { height:100%; width:0; background:var(--accent); transition:width .2s; }
+  #dlDlg .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; } #dlDlg .row .btn { flex:1; }
   #emailDlg { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:40; display:flex; align-items:center; justify-content:center; padding:20px; }
   #emailDlg .box { background:#fff; border:1.5px solid var(--ink); padding:24px; max-width:380px; width:100%; }
   #emailDlg h2 { font-size:17px; margin-bottom:8px; }
@@ -131,6 +138,12 @@
     <input type="email" id="emailInput" placeholder="you@email.com" required autocomplete="email">
     <div style="display:flex;gap:8px"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" id="emailCancel">Cancel</button></div>
   </form>
+</div>
+<div id="dlDlg" class="hidden">
+  <div class="box">
+    <h2 id="dlTitle">Download</h2>
+    <div id="dlBody"></div>
+  </div>
 </div>
 <div id="toast"></div>
 
@@ -217,7 +230,7 @@
     var count = data.sets.reduce(function (a, s) { return a + s.items.length; }, 0);
     $('gSub').textContent = (data.clientName ? 'For ' + data.clientName + ' · ' : '') + count + ' photos & films';
     $('note').innerHTML = data.expiresAt ? 'Available until <strong>' + fmtDate(data.expiresAt) + '</strong>. Please download everything you want to keep before then — files are permanently deleted after this date.' : '';
-    $('dlAll').classList.toggle('hidden', !(data.zips && data.zips.length && data.allowDownloads));
+    $('dlAll').classList.toggle('hidden', !data.allowDownloads);
     $('lbDl').classList.toggle('hidden', !data.allowDownloads);
 
     flat = [];
@@ -294,8 +307,136 @@
     if (d.error) { toast(d.error === 'session_ended' ? 'Your session ended — refresh the page and enter your PIN.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return; }
     var a = document.createElement('a'); a.href = d.url; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
   }
-  $('dlAll').addEventListener('click', function () { if (data.zips[0]) download(data.zips[0].id); });
-  $('lbDl').addEventListener('click', function () { if (flat[lbIndex]) download(flat[lbIndex].id); });
+  $('lbDl').addEventListener('click', function () {
+    var it = flat[lbIndex]; if (!it) return;
+    if (IS_PHONE && CAN_SHARE_FILES) saveToPhone([it]); else download(it.id);
+  });
+
+  // Full-resolution originals, never re-compressed. On phones they go to the
+  // camera roll through the share sheet; on computers straight into a folder.
+  var IS_PHONE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+  var CAN_SHARE_FILES = (function () { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.jpg', { type: 'image/jpeg' })] })); } catch (e) { return false; } })();
+  var CAN_PICK_FOLDER = typeof window.showDirectoryPicker === 'function';
+  function fmtSize(b) { if (!b) return ''; var u = ['B', 'KB', 'MB', 'GB']; var i = 0; while (b >= 1024 && i < 3) { b /= 1024; i++; } return b.toFixed(i > 1 ? 1 : 0) + ' ' + u[i]; }
+  function dlShow(title, html) { $('dlTitle').textContent = title; $('dlBody').innerHTML = html; $('dlDlg').classList.remove('hidden'); }
+  function dlClose() { $('dlDlg').classList.add('hidden'); dlCancel = true; }
+  var dlCancel = false;
+  $('dlDlg').addEventListener('click', function (e) { if (e.target === $('dlDlg') || e.target.closest('[data-close]')) dlClose(); });
+  function allItems() { var out = []; data.sets.forEach(function (s) { s.items.forEach(function (it) { out.push(it); }); }); return out; }
+  function mimeOf(name, kind) {
+    var ext = (name.split('.').pop() || '').toLowerCase();
+    return { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/mp4' }[ext] || (kind === 'video' ? 'video/mp4' : 'image/jpeg');
+  }
+  async function links(ids) {
+    var d = await call({ action: 'download_many', token: data.token, itemIds: ids });
+    if (d.error) { toast(d.error === 'session_ended' ? 'Your session ended — refresh the page and enter your PIN.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return null; }
+    return d.files;
+  }
+
+  $('dlAll').addEventListener('click', function () {
+    var all = allItems(), favList = all.filter(function (it) { return favs[it.id]; });
+    var total = all.reduce(function (a, it) { return a + (it.size || 0); }, 0);
+    var html = '<p>Full-resolution originals, exactly as delivered. Nothing is compressed.</p>' +
+      '<label class="opt"><input type="radio" name="dlWhat" value="all" checked><span>Everything<small>' + all.length + ' files · ' + fmtSize(total) + '</small></span></label>' +
+      (favList.length ? '<label class="opt"><input type="radio" name="dlWhat" value="fav"><span>My favourites<small>' + favList.length + ' files · ' + fmtSize(favList.reduce(function (a, it) { return a + (it.size || 0); }, 0)) + '</small></span></label>' : '') +
+      (data.zips && data.zips.length ? data.zips.map(function (z) { return '<label class="opt"><input type="radio" name="dlWhat" value="zip:' + z.id + '"><span>One ZIP file<small>' + esc(z.fileName) + (z.size ? ' · ' + fmtSize(z.size) : '') + '. Best on a computer.</small></span></label>'; }).join('') : '') +
+      '<p style="margin-top:10px">' + (IS_PHONE && CAN_SHARE_FILES ? 'On your phone, photos and films are saved to your camera roll, 10 at a time.' : CAN_PICK_FOLDER ? 'You’ll pick a folder on your computer and everything is saved straight into it.' : 'Your browser may ask to allow several downloads. Tap Allow.') + '</p>' +
+      '<div class="row"><button class="btn primary" id="dlGo">Download</button><button class="btn" data-close>Cancel</button></div>';
+    dlShow('Download your gallery', html);
+    $('dlGo').addEventListener('click', function () {
+      var v = (document.querySelector('input[name=dlWhat]:checked') || {}).value || 'all';
+      if (v.indexOf('zip:') === 0) { dlClose(); download(v.slice(4)); return; }
+      var ids = v === 'fav' ? favList.map(function (it) { return it.id; }) : null;
+      startBulk(ids, v === 'fav' ? favList : all);
+    });
+  });
+
+  async function startBulk(ids, items) {
+    dlCancel = false;
+    if (IS_PHONE && CAN_SHARE_FILES) return saveToPhone(items);
+    if (CAN_PICK_FOLDER) {
+      var dir;
+      try { dir = await window.showDirectoryPicker({ mode: 'readwrite', id: 'dbm-gallery', startIn: 'pictures' }); }
+      catch (e) { return; } // they cancelled the folder picker
+      var files = await links(ids); if (!files) return;
+      dlShow('Saving to your folder', '<p id="dlMsg">Starting…</p><div class="prog"><div id="dlBar"></div></div><p class="small" id="dlSub"></p><div class="row"><button class="btn" data-close>Stop</button></div>');
+      var total = files.reduce(function (a, f) { return a + (f.size || 0); }, 0) || 1, done = 0, bytes = 0, failed = [];
+      var sets = {}; files.forEach(function (f) { sets[f.set] = true; });
+      var useSub = Object.keys(sets).length > 1;
+      var queue = files.slice();
+      async function worker() {
+        while (queue.length && !dlCancel) {
+          var f = queue.shift();
+          try {
+            var folder = useSub ? await dir.getDirectoryHandle(f.set.replace(/[\\\/:*?"<>|]/g, '-').slice(0, 80) || 'Gallery', { create: true }) : dir;
+            var fh = await folder.getFileHandle(f.fileName.replace(/[\\\/:*?"<>|]/g, '-'), { create: true });
+            var res = await fetch(f.url); if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+            var w = await fh.createWritable(); var reader = res.body.getReader();
+            for (;;) { var r = await reader.read(); if (r.done) break; await w.write(r.value); bytes += r.value.byteLength; upd(); if (dlCancel) { await reader.cancel(); break; } }
+            await w.close();
+          } catch (e) { failed.push(f.fileName); }
+          done++; upd();
+        }
+      }
+      function upd() {
+        if (!$('dlBar')) return;
+        $('dlBar').style.width = Math.min(100, bytes / total * 100).toFixed(1) + '%';
+        $('dlMsg').textContent = done + ' of ' + files.length + ' files saved';
+        $('dlSub').textContent = fmtSize(bytes) + ' of ' + fmtSize(total);
+      }
+      await Promise.all([worker(), worker(), worker()]);
+      if (dlCancel) { toast('Download stopped. Files already saved are in your folder.'); return; }
+      dlShow(failed.length ? 'Almost done' : 'All saved', '<p>' + (failed.length ? (files.length - failed.length) + ' of ' + files.length + ' files saved. These didn’t finish: ' + esc(failed.slice(0, 5).join(', ')) + (failed.length > 5 ? '…' : '') + '. Try again to fetch them.' : 'All ' + files.length + ' full-resolution files are in the folder you chose.') + '</p><div class="row"><button class="btn primary" data-close>Done</button></div>');
+      return;
+    }
+    // Other browsers: download the originals one after another.
+    var list = await links(ids); if (!list) return;
+    dlShow('Downloading', '<p id="dlMsg">Starting…</p><div class="prog"><div id="dlBar"></div></div><p class="small">If your browser asks to allow multiple downloads, choose Allow.</p><div class="row"><button class="btn" data-close>Stop</button></div>');
+    for (var i = 0; i < list.length && !dlCancel; i++) {
+      var a = document.createElement('a'); a.href = list[i].url; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+      if ($('dlMsg')) { $('dlMsg').textContent = (i + 1) + ' of ' + list.length + ' started'; $('dlBar').style.width = ((i + 1) / list.length * 100) + '%'; }
+      await new Promise(function (r) { setTimeout(r, 1200); });
+    }
+    if (!dlCancel) dlShow('Downloads started', '<p>All ' + list.length + ' files have been sent to your Downloads folder.</p><div class="row"><button class="btn primary" data-close>Done</button></div>');
+  }
+
+  // Phones: fetch originals in groups of 10, then a tap opens the share sheet
+  // ("Save Images" / "Save Video") so they land in the camera roll at full size.
+  async function saveToPhone(items) {
+    dlCancel = false;
+    var files = await links(items.map(function (it) { return it.id; })); if (!files) return;
+    var batches = []; for (var i = 0; i < files.length; i += 10) batches.push(files.slice(i, i + 10));
+    var b = 0;
+    async function prepare() {
+      var batch = batches[b];
+      dlShow(files.length > 1 ? 'Save to your phone' : 'Save to your phone', '<p id="dlMsg">Getting full-resolution files ' + (b * 10 + 1) + '–' + (b * 10 + batch.length) + ' of ' + files.length + '…</p><div class="prog"><div id="dlBar"></div></div><div class="row"><button class="btn" data-close>Cancel</button></div>');
+      var got = [], loaded = 0, total = batch.reduce(function (a, f) { return a + (f.size || 0); }, 0) || 1;
+      for (var k = 0; k < batch.length && !dlCancel; k++) {
+        var f = batch[k];
+        try {
+          var res = await fetch(f.url); if (!res.ok) throw new Error();
+          var blob = await res.blob();
+          got.push(new File([blob], f.fileName, { type: mimeOf(f.fileName, f.kind) }));
+          loaded += f.size || blob.size; if ($('dlBar')) $('dlBar').style.width = Math.min(100, loaded / total * 100) + '%';
+        } catch (e) { /* skip that one */ }
+      }
+      if (dlCancel) return;
+      var last = b === batches.length - 1;
+      dlShow('Ready to save', '<p>' + got.length + ' file' + (got.length === 1 ? '' : 's') + ' ready (' + (b * 10 + 1) + '–' + (b * 10 + batch.length) + ' of ' + files.length + '). Tap Save, then choose <b>Save Images</b> or <b>Save Video</b>.</p>' +
+        '<div class="row"><button class="btn primary" id="dlShare">Save ' + got.length + ' to phone</button><button class="btn" data-close>Cancel</button></div>' +
+        '<p class="small" style="margin-top:10px"><a href="#" id="dlPlain">Download as files instead</a></p>');
+      $('dlPlain').addEventListener('click', function (e) { e.preventDefault(); batch.forEach(function (f, n) { setTimeout(function () { var a = document.createElement('a'); a.href = f.url; document.body.appendChild(a); a.click(); a.remove(); }, n * 1200); }); next(); });
+      $('dlShare').addEventListener('click', async function () {
+        try { await navigator.share({ files: got }); } catch (e) { if (e && e.name === 'AbortError') return; toast('Your phone couldn’t share these. Using normal download.'); batch.forEach(function (f) { var a = document.createElement('a'); a.href = f.url; document.body.appendChild(a); a.click(); a.remove(); }); }
+        next();
+      });
+      function next() {
+        if (last) { dlShow('All done', '<p>All ' + files.length + ' file' + (files.length === 1 ? '' : 's') + ' sent to your phone.</p><div class="row"><button class="btn primary" data-close>Done</button></div>'); return; }
+        b++; prepare();
+      }
+    }
+    prepare();
+  }
 
   // ---------- lightbox ----------
   function openLb(i) {
