@@ -148,6 +148,7 @@
           it.thumb = embedThumbUrl(ref);
         } else {
           it.url = storagePublicUrl(it.storage_path);
+          if (cfg.mediaType !== 'video') it.small = storagePublicUrl(dbmSmallPath(it.storage_path));
         }
         if (!itemsByShoot[it[cfg.itemShootFk]]) itemsByShoot[it[cfg.itemShootFk]] = [];
         itemsByShoot[it[cfg.itemShootFk]].push(it);
@@ -183,7 +184,7 @@
       if (cfg.mediaType === 'video') {
         return '<video class="dbm-media" src="' + item.url + '" ' + (extraAttrs || '') + ' muted playsinline preload="metadata"></video>';
       }
-      return '<img class="dbm-media" src="' + item.url + '" alt="Dream Big Media — ' + cfg.sectionName + ' photography in Nottingham" loading="lazy" ' + (extraAttrs || '') + '>';
+      return '<img class="dbm-media" src="' + (item.small || item.url) + '" data-full="' + item.url + '" onerror="if(this.dataset.full&&this.src!==this.dataset.full){this.src=this.dataset.full}" alt="Dream Big Media — ' + cfg.sectionName + ' photography in Nottingham" loading="lazy" decoding="async" ' + (extraAttrs || '') + '>';
     }
 
     function renderGallery() {
@@ -253,7 +254,7 @@
             var confirmed = confirm('Delete the entire "' + shootName + '" shoot and all its photos/videos? This cannot be undone.');
             if (!confirmed) return;
             var paths = shoot.items.map(function (it) { return it.storage_path; }).filter(function (p) { return !isEmbedRef(p); });
-            if (paths.length) await supabase.storage.from(cfg.bucket).remove(paths);
+            if (paths.length) await supabase.storage.from(cfg.bucket).remove(cfg.mediaType === 'video' ? paths : paths.concat(paths.map(dbmSmallPath)));
             await supabase.from(cfg.shootTable).delete().eq('id', shoot.id);
             await loadShoots();
           });
@@ -422,6 +423,7 @@
               var path = shoot.id + '/' + Date.now() + '-' + i + '.' + ext;
               var { error: uploadErr } = await supabase.storage.from(cfg.bucket).upload(path, file);
               if (uploadErr) throw uploadErr;
+              if (cfg.mediaType !== 'video') await dbmUploadSmall(cfg.bucket, path, file);
               var payload = { storage_path: path, display_order: baseOrder + 1 + i };
               payload[cfg.itemShootFk] = shoot.id;
               var { data: newItem, error: itemErr } = await supabase.from(cfg.itemTable).insert(payload).select().single();
@@ -492,7 +494,7 @@
             return;
           }
           if (!confirm('Delete this permanently? This cannot be undone.')) return;
-          if (!isEmbedRef(item.storage_path)) await supabase.storage.from(cfg.bucket).remove([item.storage_path]);
+          if (!isEmbedRef(item.storage_path)) await supabase.storage.from(cfg.bucket).remove(cfg.mediaType === 'video' ? [item.storage_path] : [item.storage_path, dbmSmallPath(item.storage_path)]);
           await supabase.from(cfg.itemTable).delete().eq('id', item.id);
           shoot.items = shoot.items.filter(function (p) { return p.id !== item.id; });
           if (!shoot.cover || shoot.cover.id === item.id) {
@@ -687,6 +689,7 @@
             var path = shootId + '/' + Date.now() + '-' + i + '.' + fileExt(file.name, cfg.mediaType === 'video' ? 'mp4' : 'jpg');
             var { error: uploadErr } = await supabase.storage.from(cfg.bucket).upload(path, file);
             if (uploadErr) throw uploadErr;
+            if (cfg.mediaType !== 'video') await dbmUploadSmall(cfg.bucket, path, file);
 
             var itemPayload = { storage_path: path, display_order: baseOrder + i };
             itemPayload[cfg.itemShootFk] = shootId;
@@ -1257,6 +1260,10 @@
   // ---------- Testimonials ----------
   var testimonialsCache = [];
 
+  function dbmEscape(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
+
   function starsHtml(rating) {
     var r = Math.max(1, Math.min(5, parseInt(rating, 10) || 5));
     return '<p class="dbm-testimonial-stars" aria-label="' + r + ' out of 5 stars" ' +
@@ -1268,8 +1275,8 @@
     var card = document.createElement('div');
     card.className = 'dbm-testimonial-card';
     card.innerHTML = starsHtml(t.rating) +
-      '<p class="dbm-testimonial-quote">&ldquo;' + t.quote + '&rdquo;</p>' +
-      '<p class="dbm-testimonial-name">' + t.client_name + '</p>';
+      '<p class="dbm-testimonial-quote">&ldquo;' + dbmEscape(t.quote) + '&rdquo;</p>' +
+      '<p class="dbm-testimonial-name">' + dbmEscape(t.client_name) + '</p>';
     return card;
   }
 
@@ -1536,6 +1543,30 @@
     var pkgPrice = (card.querySelector('.dbm-pkg-price') || {}).textContent || '';
     startEnquiry(key ? PKG_TYPES[key] : '', "I'm interested in the " + headText + ' ' + pkgName.trim() + ' package (' + pkgPrice.trim() + ').\n\n');
   });
+
+  // ---------- Small grid copies ----------
+  // The grid shows an 800px copy (name.sm.webp) so the page stays light;
+  // the full photo only loads when someone opens it.
+  function dbmSmallPath(path) { return String(path).replace(/\.[^.\/]+$/, '') + '.sm.webp'; }
+  async function dbmMakeSmall(file) {
+    var bmp = await createImageBitmap(file);
+    var s = Math.min(1, 800 / Math.max(bmp.width, bmp.height));
+    var cur = bmp, cw = bmp.width, ch = bmp.height, tw = Math.round(cw * s), th = Math.round(ch * s);
+    while (cw / 2 >= tw && ch / 2 >= th) {
+      var step = document.createElement('canvas'); step.width = Math.round(cw / 2); step.height = Math.round(ch / 2);
+      var sx = step.getContext('2d'); sx.imageSmoothingQuality = 'high'; sx.drawImage(cur, 0, 0, step.width, step.height);
+      cur = step; cw = step.width; ch = step.height;
+    }
+    var c = document.createElement('canvas'); c.width = tw; c.height = th;
+    var ctx = c.getContext('2d'); ctx.imageSmoothingQuality = 'high'; ctx.drawImage(cur, 0, 0, tw, th);
+    return new Promise(function (r) { c.toBlob(r, 'image/webp', 0.82); });
+  }
+  async function dbmUploadSmall(bucket, path, file) {
+    try {
+      var small = await dbmMakeSmall(file);
+      if (small) await supabase.storage.from(bucket).upload(dbmSmallPath(path), small, { contentType: 'image/webp', upsert: true, cacheControl: '31536000' });
+    } catch (e) { /* the grid falls back to the full photo */ }
+  }
 
   // ---------- Image optimiser ----------
   // Resizes photos to max 2400px on the long edge and saves as WebP (~60-80% smaller).
