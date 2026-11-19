@@ -78,6 +78,15 @@
   #dlDlg .opt input { margin-top:3px; } #dlDlg .opt small { display:block; color:var(--muted); font-size:12px; margin-top:2px; }
   #dlDlg .prog { height:8px; background:#e6e4dd; margin:14px 0 6px; } #dlDlg .prog div { height:100%; width:0; background:var(--accent); transition:width .2s; }
   #dlDlg .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; } #dlDlg .row .btn { flex:1; }
+  .tile .tick { position:absolute; left:8px; top:8px; width:28px; height:28px; border-radius:50%; border:2px solid #fff; background:rgba(0,0,0,.25); display:none; align-items:center; justify-content:center; color:#fff; font-size:15px; font-weight:700; }
+  body.selecting .tile { cursor:pointer; } body.selecting .tile .tick { display:flex; }
+  .tile.picked .tick { background:var(--accent); border-color:var(--accent); }
+  .tile.picked img { opacity:.72; } .tile.picked { outline:3px solid var(--accent); outline-offset:-3px; }
+  #selBar { position:fixed; left:0; right:0; bottom:0; z-index:30; background:var(--ink); color:#fff; padding:10px 14px calc(10px + env(safe-area-inset-bottom)); display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:center; }
+  #selBar .count { font-weight:700; margin-right:6px; } #selBar .btn { padding:8px 12px; font-size:13px; }
+  #selBar .btn.ghost { background:transparent; color:#fff; border-color:rgba(255,255,255,.5); }
+  body.selecting footer { padding-bottom:80px; }
+  .sharebox { display:flex; gap:6px; } .sharebox input { flex:1; min-width:0; padding:10px; border:1.5px solid var(--ink); font:14px 'Inter',sans-serif; background:#faf9f5; }
   .love { max-width:1200px; margin:30px auto 0; padding:0 16px; }
   .love .card { border:1.5px solid var(--ink); background:#fff; padding:26px 22px; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between; }
   .love h2 { font-size:20px; margin-bottom:4px; } .love p { color:var(--muted); font-size:14px; max-width:520px; }
@@ -122,6 +131,8 @@
   <div class="bar"><div class="inner">
     <div class="tabs" id="tabs"></div>
     <button class="btn" id="favFilter" style="padding:7px 12px">♡ Favourites</button>
+    <button class="btn" id="selectBtn" style="padding:7px 12px">Select</button>
+    <button class="btn" id="shareBtn" style="padding:7px 12px">Share</button>
     <button class="btn primary hidden" id="dlAll" style="padding:7px 12px">Download all</button>
   </div></div>
   <div class="note" id="note"></div>
@@ -158,6 +169,13 @@
     <div style="display:flex;gap:8px"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" id="emailCancel">Cancel</button></div>
   </form>
 </div>
+<div id="selBar" class="hidden">
+  <span class="count" id="selCount">0 selected</span>
+  <button class="btn primary" id="selDl">Download</button>
+  <button class="btn ghost" id="selAll">Select all</button>
+  <button class="btn ghost" id="selClear">Clear</button>
+  <button class="btn ghost" id="selDone">Done</button>
+</div>
 <div id="dlDlg" class="hidden">
   <div class="box">
     <h2 id="dlTitle">Download</h2>
@@ -172,6 +190,7 @@
   var FN = SUPABASE_URL + '/functions/v1/gallery';
   var slug = new URLSearchParams(location.search).get('g') || '';
   var KEY = 'dbm_gallery_' + slug;
+  var picked = {}, selecting = false;
   var data = null, flat = [], favs = {}, email = '', showFavsOnly = false, lbIndex = -1, pendingFav = null, refreshTimer = null;
   var HEART = '<svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1 8.2 3.4 4.5 7 4.5c2 0 3.4 1.1 5 3 1.6-1.9 3-3 5-3 3.6 0 6 3.7 4.5 7.3C19.5 16.4 12 21 12 21z"/></svg>';
 
@@ -226,6 +245,7 @@
     if (d.error === 'expired') { showExpired(); return; }
     if (d.error === 'not_found') { gateError('This gallery isn’t available. Check the link in your email.'); return; }
     if (d.error) { gateError('Something went wrong. Please try again.'); return; }
+    try { sessionStorage.setItem('dbm_pin_' + slug, pin); } catch (e) {}
     start(d);
   });
 
@@ -259,7 +279,8 @@
       var tiles = s.items.filter(function (it) { return !showFavsOnly || favs[it.id]; }).map(function (it) {
         var idx = flat.push(it) - 1;
         var ratio = it.width && it.height ? ' style="aspect-ratio:' + it.width + '/' + it.height + '"' : '';
-        return '<div class="tile" data-i="' + idx + '"' + ratio + '>' +
+        return '<div class="tile' + (picked[it.id] ? ' picked' : '') + '" data-i="' + idx + '"' + ratio + '>' +
+          '<span class="tick">✓</span>' +
           (it.thumb ? '<img loading="lazy" decoding="async" src="' + esc(it.thumb) + '" alt="">' : '') +
           (it.kind === 'video' ? '<div class="play"><span></span></div>' : '') +
           '<button class="heart' + (favs[it.id] ? ' on' : '') + '" data-fav="' + it.id + '" aria-label="Favourite">' + HEART + '</button></div>';
@@ -275,7 +296,9 @@
     var h = e.target.closest('[data-fav]');
     if (h) { e.stopPropagation(); toggleFav(h.getAttribute('data-fav')); return; }
     var t = e.target.closest('.tile');
-    if (t) openLb(+t.getAttribute('data-i'));
+    if (!t) return;
+    if (selecting) { togglePick(t); return; }
+    openLb(+t.getAttribute('data-i'));
   });
   $('tabs').addEventListener('click', function (e) {
     var b = e.target.closest('.tab'); if (!b) return;
@@ -324,12 +347,13 @@
   async function download(itemId) {
     toast('Preparing download…');
     var d = await call({ action: 'download', token: data.token, itemId: itemId });
+    if (d.error === 'email_required') { data.registered = false; needEmail(function () { download(itemId); }); return; }
     if (d.error) { toast(d.error === 'session_ended' ? 'Your session ended — refresh the page and enter your PIN.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return; }
     var a = document.createElement('a'); a.href = d.url; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
   }
   $('lbDl').addEventListener('click', function () {
     var it = flat[lbIndex]; if (!it) return;
-    if (IS_PHONE && CAN_SHARE_FILES) saveToPhone([it]); else download(it.id);
+    needEmail(function () { if (IS_PHONE && CAN_SHARE_FILES) saveToPhone([it]); else download(it.id); });
   });
 
   // Full-resolution originals, never re-compressed. On phones they go to the
@@ -349,27 +373,32 @@
   }
   async function links(ids) {
     var d = await call({ action: 'download_many', token: data.token, itemIds: ids });
+    if (d.error === 'email_required') { data.registered = false; needEmail(function () { toast('Thanks! Tap Download again.'); }); return null; }
     if (d.error) { toast(d.error === 'session_ended' ? 'Your session ended — refresh the page and enter your PIN.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return null; }
     return d.files;
   }
 
-  $('dlAll').addEventListener('click', function () {
+  $('dlAll').addEventListener('click', function () { needEmail(openDownloadChoice); });
+  function openDownloadChoice() {
     var all = allItems(), favList = all.filter(function (it) { return favs[it.id]; });
+    var pickList = all.filter(function (it) { return picked[it.id]; });
     var total = all.reduce(function (a, it) { return a + (it.size || 0); }, 0);
     var html = '<p>Full-resolution originals, exactly as delivered. Nothing is compressed.</p>' +
-      '<label class="opt"><input type="radio" name="dlWhat" value="all" checked><span>Everything<small>' + all.length + ' files · ' + fmtSize(total) + '</small></span></label>' +
+      (pickList.length ? '<label class="opt"><input type="radio" name="dlWhat" value="sel" checked><span>Photos I selected<small>' + pickList.length + ' files · ' + fmtSize(pickList.reduce(function (a, it) { return a + (it.size || 0); }, 0)) + '</small></span></label>' : '') +
+      '<label class="opt"><input type="radio" name="dlWhat" value="all"' + (pickList.length ? '' : ' checked') + '><span>Everything<small>' + all.length + ' files · ' + fmtSize(total) + '</small></span></label>' +
       (favList.length ? '<label class="opt"><input type="radio" name="dlWhat" value="fav"><span>My favourites<small>' + favList.length + ' files · ' + fmtSize(favList.reduce(function (a, it) { return a + (it.size || 0); }, 0)) + '</small></span></label>' : '') +
       (data.zips && data.zips.length ? data.zips.map(function (z) { return '<label class="opt"><input type="radio" name="dlWhat" value="zip:' + z.id + '"><span>One ZIP file<small>' + esc(z.fileName) + (z.size ? ' · ' + fmtSize(z.size) : '') + '. Best on a computer.</small></span></label>'; }).join('') : '') +
       '<p style="margin-top:10px">' + (IS_PHONE && CAN_SHARE_FILES ? 'On your phone, photos and films are saved to your camera roll, 10 at a time.' : CAN_PICK_FOLDER ? 'You’ll pick a folder on your computer and everything is saved straight into it.' : 'Your browser may ask to allow several downloads. Tap Allow.') + '</p>' +
+      (pickList.length ? '' : '<p class="small" style="margin-top:6px">Only want some? Tap <b>Select</b> at the top, pick your photos, then Download.</p>') +
       '<div class="row"><button class="btn primary" id="dlGo">Download</button><button class="btn" data-close>Cancel</button></div>';
     dlShow('Download your gallery', html);
     $('dlGo').addEventListener('click', function () {
       var v = (document.querySelector('input[name=dlWhat]:checked') || {}).value || 'all';
       if (v.indexOf('zip:') === 0) { dlClose(); download(v.slice(4)); return; }
-      var ids = v === 'fav' ? favList.map(function (it) { return it.id; }) : null;
-      startBulk(ids, v === 'fav' ? favList : all);
+      var chosen = v === 'fav' ? favList : v === 'sel' ? pickList : all;
+      startBulk(v === 'all' ? null : chosen.map(function (it) { return it.id; }), chosen);
     });
-  });
+  }
 
   async function startBulk(ids, items) {
     dlCancel = false;
@@ -457,6 +486,92 @@
     }
     prepare();
   }
+
+  // ---------- choose photos to download ----------
+  function pickedCount() { return Object.keys(picked).length; }
+  function updateSelBar() {
+    var n = pickedCount();
+    $('selCount').textContent = n + ' selected';
+    $('selDl').disabled = !n;
+    $('selDl').textContent = n ? 'Download ' + n : 'Download';
+  }
+  function setSelecting(on) {
+    selecting = on;
+    document.body.classList.toggle('selecting', on);
+    $('selBar').classList.toggle('hidden', !on);
+    $('selectBtn').classList.toggle('primary', on);
+    $('selectBtn').textContent = on ? 'Selecting…' : 'Select';
+    if (on) { updateSelBar(); toast('Tap the photos you want, then Download.'); }
+  }
+  function togglePick(tile) {
+    var it = flat[+tile.getAttribute('data-i')]; if (!it) return;
+    if (picked[it.id]) delete picked[it.id]; else picked[it.id] = true;
+    tile.classList.toggle('picked', !!picked[it.id]);
+    updateSelBar();
+  }
+  $('selectBtn').addEventListener('click', function () { setSelecting(!selecting); });
+  $('selDone').addEventListener('click', function () { setSelecting(false); });
+  $('selClear').addEventListener('click', function () { picked = {}; render(true); updateSelBar(); });
+  $('selAll').addEventListener('click', function () { flat.forEach(function (it) { picked[it.id] = true; }); render(true); updateSelBar(); });
+  $('selDl').addEventListener('click', function () {
+    var list = allItems().filter(function (it) { return picked[it.id]; });
+    if (!list.length) return;
+    if (!data.allowDownloads) { toast('Downloads are turned off for this gallery.'); return; }
+    needEmail(function () { startBulk(list.map(function (it) { return it.id; }), list); });
+  });
+
+  // ---------- email before downloading ----------
+  // Every download needs a name and email first (saved for Dream Big Media).
+  function needEmail(next) {
+    if (data.registered) { next(); return; }
+    dlShow('Before you download', '<p>Pop in your name and email so I know who has the files. I’ll only use it about your photos. <a href="/privacy/" target="_blank" rel="noopener">Privacy</a></p>' +
+      '<input class="fld" id="regName" placeholder="Your name" maxlength="80" autocomplete="name" value="' + esc(readLocal('dbm_gallery_name') || data.clientName || '') + '">' +
+      '<input class="fld" id="regEmail" type="email" placeholder="Your email" maxlength="200" autocomplete="email" value="' + esc(email || '') + '">' +
+      '<label class="chk"><input type="checkbox" id="regNews"> Also send me occasional news and offers from Dream Big Media.</label>' +
+      '<p id="regMsg" style="color:var(--accent);min-height:18px;margin:6px 0 0"></p>' +
+      '<div class="row"><button class="btn primary" id="regGo">Continue to download</button><button class="btn" data-close>Cancel</button></div>');
+    $('regGo').addEventListener('click', async function () {
+      var name = $('regName').value.trim(), em = $('regEmail').value.trim();
+      if (!name) { $('regMsg').textContent = 'Please add your name.'; return; }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { $('regMsg').textContent = 'Please add a valid email.'; return; }
+      this.disabled = true; $('regMsg').textContent = 'Saving…';
+      var d = await call({ action: 'register', token: data.token, name: name, email: em, marketing: $('regNews').checked });
+      if (d.error) { this.disabled = false; $('regMsg').textContent = d.error === 'session_ended' ? 'Your session ended. Refresh the page and enter your PIN.' : 'Couldn’t save that. Please try again.'; return; }
+      data.registered = true;
+      storeLocal('dbm_gallery_name', name);
+      if (!email) { email = em.toLowerCase(); storeLocal('dbm_gallery_email', email); }
+      $('dlDlg').classList.add('hidden');
+      next();
+    });
+  }
+
+  // ---------- share the gallery ----------
+  $('shareBtn').addEventListener('click', function () {
+    var url = location.origin + location.pathname + '?g=' + encodeURIComponent(slug);
+    var pin = ''; try { pin = sessionStorage.getItem('dbm_pin_' + slug) || ''; } catch (e) {}
+    function message(withPin) {
+      return 'Here are the photos from ' + data.title + ' by Dream Big Media: ' + url + (withPin && pin ? '\nPIN: ' + pin : '');
+    }
+    dlShow('Share this gallery', '<p>Send the link to family and friends. They’ll need the PIN to open it.</p>' +
+      '<div class="sharebox"><input id="shLink" readonly value="' + esc(url) + '"><button class="btn" id="shCopy">Copy</button></div>' +
+      (pin ? '<label class="chk" style="margin-top:10px"><input type="checkbox" id="shPin" checked> Include the PIN (' + esc(pin) + ') in the message</label>' : '<p class="small" style="margin-top:10px">Remember to send them the PIN from your email too.</p>') +
+      '<div class="row">' + (navigator.share ? '<button class="btn primary" id="shNative">Share…</button>' : '') +
+      '<a class="btn" id="shWa" target="_blank" rel="noopener">WhatsApp</a><a class="btn" id="shMail">Email</a></div>' +
+      '<div class="row"><button class="btn" data-close>Close</button></div>');
+    function withPin() { return !!($('shPin') && $('shPin').checked); }
+    function refresh() {
+      $('shWa').href = 'https://wa.me/?text=' + encodeURIComponent(message(withPin()));
+      $('shMail').href = 'mailto:?subject=' + encodeURIComponent('Photos: ' + data.title) + '&body=' + encodeURIComponent(message(withPin()));
+    }
+    refresh(); if ($('shPin')) $('shPin').addEventListener('change', refresh);
+    $('shCopy').addEventListener('click', async function () {
+      var text = message(withPin());
+      try { await navigator.clipboard.writeText(text); toast('Copied. Paste it into a message.'); } catch (e) { $('shLink').select(); toast('Press and hold the link to copy it.'); }
+    });
+    if ($('shNative')) $('shNative').addEventListener('click', async function () {
+      try { await navigator.share({ title: data.title, text: message(withPin()) }); } catch (e) {}
+    });
+  });
 
   // ---------- reviews & prints ----------
   // Optional: paste your Google review link here to offer it after a review.
