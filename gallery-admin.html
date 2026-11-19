@@ -77,8 +77,9 @@
   <section id="listView" class="hidden">
     <div class="row" style="justify-content:space-between;margin-bottom:14px">
       <h2 style="margin:0">Galleries</h2>
-      <button class="btn primary" id="newBtn">+ New gallery</button>
+      <div class="row"><button class="btn" id="cleanupBtn" title="Deletes galleries past their expiry date and their files">Run cleanup now</button><button class="btn primary" id="newBtn">+ New gallery</button></div>
     </div>
+    <div class="small muted" id="cleanupNote" style="margin:-6px 0 12px"></div>
     <div class="card hidden" id="newCard">
       <h2>New gallery</h2>
       <form id="newForm">
@@ -210,7 +211,7 @@
     $('loginMsg').textContent = 'Logging in…';
     var r = await sb.auth.signInWithPassword({ email: $('loginEmail').value.trim(), password: $('loginPassword').value });
     $('loginMsg').textContent = r.error ? r.error.message : '';
-    if (!r.error && await refreshSession()) loadList();
+    if (!r.error && await refreshSession()) { loadList(); cleanupIfDue(); }
   });
   $('logoutBtn').addEventListener('click', async function () { await sb.auth.signOut(); current = null; refreshSession(); });
 
@@ -537,8 +538,36 @@
       ' · ' + (c.download || 0) + ' single downloads · ' + (c.download_all || 0) + ' “download all” · ' + (c.pin_fail || 0) + ' wrong PINs';
   }
 
+  // ---------- cleanup (also run by the nightly GitHub job) ----------
+  async function runCleanup(manual) {
+    var r = await sb.auth.getSession(); session = r.data.session;
+    if (manual) { $('cleanupBtn').disabled = true; $('cleanupNote').textContent = 'Running cleanup…'; }
+    try {
+      var res = await fetch(FN + 'gallery-cleanup', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + session.access_token, 'apikey': SUPABASE_PUBLISHABLE_KEY }
+      });
+      var d = await res.json().catch(function () { return {}; });
+      if (!res.ok || !d.ok) throw new Error(d.error || ('Cleanup error ' + res.status));
+      try { localStorage.setItem('dbm_cleanup_day', d.today); } catch (e) {}
+      var msg = d.deletedGalleries
+        ? 'Cleanup: deleted ' + d.deletedGalleries + ' expired ' + (d.deletedGalleries === 1 ? 'gallery' : 'galleries') + ' (' + d.filesDeleted + ' files).'
+        : 'Cleanup: nothing has expired.';
+      if (d.expiringIn7Days) msg += ' ' + d.expiringIn7Days + ' expiring in 7 days, remind the client.';
+      $('cleanupNote').textContent = msg + ' Last run ' + fmtDate(d.today) + '.';
+      if (d.deletedGalleries) loadList();
+    } catch (e) {
+      $('cleanupNote').textContent = 'Cleanup failed: ' + e.message;
+    } finally { $('cleanupBtn').disabled = false; }
+  }
+  $('cleanupBtn').addEventListener('click', function () { runCleanup(true); });
+  function cleanupIfDue() {
+    var last = null; try { last = localStorage.getItem('dbm_cleanup_day'); } catch (e) {}
+    if (last !== new Date().toISOString().slice(0, 10)) runCleanup(false);
+  }
+
   sb.auth.onAuthStateChange(function () { refreshSession(); });
-  refreshSession().then(function (ok) { if (ok) loadList(); });
+  refreshSession().then(function (ok) { if (ok) { loadList(); cleanupIfDue(); } });
 })();
 </script>
 </body>
