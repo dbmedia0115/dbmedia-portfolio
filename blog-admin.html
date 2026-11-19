@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Blog — Admin | Dream Big Media</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap');
+  :root { --ink:#0a0a0a; --paper:#f5f5f0; --accent:#8c1d18; --line:#d8d6cf; --muted:#6b6a64; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink); font-size:15px; }
+  h1, h2 { font-family:'Archivo Black',sans-serif; font-weight:400; text-transform:uppercase; }
+  h1 { font-size:20px; } h2 { font-size:17px; margin-bottom:12px; }
+  a { color:var(--accent); }
+  header { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:14px 20px; border-bottom:1.5px solid var(--ink); background:#fff; position:sticky; top:0; z-index:5; }
+  header nav a { margin-left:14px; font-weight:600; font-size:13px; }
+  main { max-width:980px; margin:0 auto; padding:20px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border:1.5px solid var(--ink); background:#fff; color:var(--ink); padding:10px 14px; font:600 14px 'Inter',sans-serif; cursor:pointer; text-decoration:none; }
+  .btn:hover { background:var(--ink); color:var(--paper); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.danger { color:var(--accent); border-color:var(--accent); }
+  .btn.small { padding:6px 10px; font-size:12px; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .card { background:#fff; border:1.5px solid var(--ink); padding:18px; margin-bottom:16px; }
+  input[type=text], input[type=email], input[type=password], input[type=date], textarea {
+    width:100%; padding:11px 12px; border:1.5px solid var(--ink); font:16px 'Inter',sans-serif; background:#fff; }
+  textarea { resize:vertical; line-height:1.55; }
+  label { display:block; font-weight:600; font-size:12px; margin:12px 0 5px; text-transform:uppercase; letter-spacing:.04em; }
+  .hint { font-size:12px; color:var(--muted); margin-top:4px; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+  .posts { list-style:none; }
+  .posts li { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:12px 4px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .posts li:hover { background:#faf9f5; }
+  .posts .t { font-weight:700; } .posts .m { font-size:12px; color:var(--muted); margin-top:2px; }
+  .pill { display:inline-block; padding:2px 8px; font-size:11px; font-weight:700; text-transform:uppercase; border:1.5px solid currentColor; white-space:nowrap; }
+  .pill.draft { color:var(--muted); } .pill.published { color:#1d6b2f; }
+  .photos { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-top:12px; }
+  .ph { border:1.5px solid var(--line); background:#fff; }
+  .ph .im { position:relative; aspect-ratio:3/2; background:#eee; }
+  .ph img { width:100%; height:100%; object-fit:cover; display:block; }
+  .ph .num { position:absolute; left:5px; top:5px; background:var(--ink); color:#fff; font-size:11px; font-weight:700; padding:2px 6px; }
+  .ph .cov { position:absolute; right:5px; top:5px; background:var(--accent); color:#fff; font-size:10px; font-weight:700; padding:2px 6px; text-transform:uppercase; }
+  .ph input { border:0; border-top:1px solid var(--line); font-size:13px; padding:7px 8px; }
+  .ph .acts { display:flex; flex-wrap:wrap; border-top:1px solid var(--line); }
+  .ph .acts button { flex:1 1 33%; border:0; border-right:1px solid var(--line); background:#fff; padding:7px 2px; font:600 11px 'Inter',sans-serif; cursor:pointer; }
+  .ph .acts button:hover { background:var(--paper); }
+  .progress { height:6px; background:var(--line); margin-top:10px; } .progress > div { height:100%; width:0; background:var(--accent); transition:width .2s; }
+  .bar { position:sticky; bottom:0; background:#fff; border-top:1.5px solid var(--ink); padding:12px 20px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; z-index:4; }
+  .status { font-size:13px; color:var(--muted); }
+  .preview { background:#f4f3ee; border:1.5px dashed var(--muted); padding:22px; font-size:17px; line-height:1.65; }
+  .preview h1 { font-size:28px; margin-bottom:8px; } .preview .meta { color:var(--muted); font-size:14px; margin-bottom:16px; }
+  .preview p { margin:0 0 1em; } .preview h2 { margin:1.4em 0 .4em; font-size:19px; } .preview ul { padding-left:1.2em; margin-bottom:1em; }
+  .preview img { max-width:100%; height:auto; display:block; border-radius:8px; }
+  .preview .bp-photo { margin:18px 0; } .preview figcaption { font-size:13px; color:var(--muted); }
+  .preview .bp-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; } .preview .bp-grid img { aspect-ratio:1; object-fit:cover; }
+  .preview .cover { margin-bottom:18px; }
+  details.help { font-size:13px; margin-top:8px; } details.help summary { cursor:pointer; font-weight:600; color:var(--accent); }
+  details.help code { background:#efede6; padding:1px 4px; }
+  details.help ul { margin:6px 0 0 18px; line-height:1.7; }
+  .hidden { display:none !important; }
+  #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; font-size:14px; display:none; z-index:20; max-width:90vw; }
+  @media (max-width:700px) { .grid2 { grid-template-columns:1fr; } main { padding:12px; } header { padding:12px; } .bar { padding:10px 12px; } .bar .btn { flex:1; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Blog</h1>
+  <nav><a href="/blog" target="_blank" rel="noopener">View blog ↗</a><a href="/gallery-admin.html">Galleries</a><a href="#" id="logoutBtn" class="hidden">Log out</a></nav>
+</header>
+
+<main>
+  <section id="loginView" class="card hidden" style="max-width:420px;margin:40px auto">
+    <h2>Log in</h2>
+    <form id="loginForm">
+      <label>Email</label><input type="email" id="loginEmail" autocomplete="username" required>
+      <label>Password</label><input type="password" id="loginPassword" autocomplete="current-password" required>
+      <div class="row" style="margin-top:16px"><button class="btn primary" type="submit">Log in</button><span id="loginMsg" class="status"></span></div>
+    </form>
+  </section>
+
+  <section id="listView" class="hidden">
+    <div class="row" style="justify-content:space-between;margin-bottom:12px">
+      <h2 style="margin:0">Posts</h2>
+      <button class="btn primary" id="newBtn">+ New post</button>
+    </div>
+    <div class="card" style="padding:4px 14px"><ul class="posts" id="postRows"><li class="status">Loading…</li></ul></div>
+  </section>
+
+  <section id="editView" class="hidden">
+    <div class="row" style="margin-bottom:12px"><button class="btn small" id="backBtn">← All posts</button><span class="pill" id="statusPill"></span></div>
+
+    <div class="card">
+      <label for="fTitle">Title</label>
+      <input type="text" id="fTitle" maxlength="160" placeholder="e.g. Ama's 30th birthday at The Pitcher & Piano">
+      <div class="grid2">
+        <div><label for="fDate">Event date</label><input type="date" id="fDate"></div>
+        <div><label for="fLocation">Location</label><input type="text" id="fLocation" maxlength="120" placeholder="e.g. Nottingham"></div>
+      </div>
+      <label for="fBody">Your story</label>
+      <textarea id="fBody" rows="14" maxlength="50000" placeholder="What was the event? What did you shoot? Any favourite moments?&#10;&#10;Leave a blank line between paragraphs."></textarea>
+      <details class="help"><summary>Formatting tips</summary>
+        <ul>
+          <li>Leave a blank line to start a new paragraph</li>
+          <li><code>## The setup</code> makes a heading</li>
+          <li><code>- Cake moment</code> makes a bullet point</li>
+          <li><code>**bold**</code>, <code>*italic*</code>, <code>[my site](https://www.dreambigmedia.co.uk)</code></li>
+          <li><code>[photo 2]</code> on its own line puts photo 2 there. Photos you don't place show at the end.</li>
+        </ul>
+      </details>
+      <label for="fExcerpt">Short summary (optional)</label>
+      <textarea id="fExcerpt" rows="2" maxlength="300" placeholder="One or two lines shown on the blog page and when shared. Left empty, the start of your story is used."></textarea>
+      <label for="fSlug">Web address</label>
+      <input type="text" id="fSlug" maxlength="80" placeholder="amas-30th-birthday">
+      <div class="hint">dreambigmedia.co.uk/blog/<b id="slugShow">…</b></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><h2 style="margin:0">Photos</h2><span class="status" id="photoCount"></span></div>
+      <div class="row" style="margin-top:10px">
+        <label class="btn" style="margin:0;text-transform:none;letter-spacing:0;font-size:14px">+ Add photos<input type="file" id="fileInput" accept="image/*" multiple hidden></label>
+        <span class="hint" style="margin:0">Resized to 2000 px so pages load fast. The first photo is the cover unless you pick another.</span>
+      </div>
+      <div class="progress hidden" id="upProg"><div id="upBar"></div></div>
+      <div class="photos" id="photos"></div>
+    </div>
+
+    <div class="card">
+      <h2>Preview</h2>
+      <div class="preview" id="preview"></div>
+    </div>
+    <div class="row" style="margin-bottom:90px"><button class="btn danger small" id="deleteBtn">Delete this post</button></div>
+  </section>
+</main>
+
+<div class="bar hidden" id="saveBar">
+  <span class="status" id="saveStatus">All changes saved</span>
+  <div class="row">
+    <a class="btn hidden" id="viewBtn" target="_blank" rel="noopener">View ↗</a>
+    <button class="btn" id="saveBtn">Save draft</button>
+    <button class="btn primary" id="publishBtn">Publish</button>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="/config.js"></script>
+<script src="/blog-format.js"></script>
+<script>
+(function () {
+  var ADMIN_EMAIL = 'db.media0115@gmail.com';
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  var F = window.BlogFormat;
+  var session = null, posts = [], post = null, dirty = false, slugTouched = false;
+
+  function $(id) { return document.getElementById(id); }
+  function show(id, on) { $(id).classList.toggle('hidden', !on); }
+  function esc(s) { return F.esc(s); }
+  function toast(msg) { var t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, 3500); }
+  function slugify(s) {
+    return String(s).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80).replace(/-+$/, '');
+  }
+  function rand(n) { var a = new Uint8Array(n); crypto.getRandomValues(a); return Array.prototype.map.call(a, function (x) { return (x % 36).toString(36); }).join(''); }
+
+  // ---------- auth ----------
+  async function refreshSession() {
+    var r = await sb.auth.getSession(); session = r.data.session;
+    var ok = !!(session && session.user.email === ADMIN_EMAIL);
+    show('logoutBtn', ok); show('loginView', !ok);
+    show('listView', ok && !post); show('editView', ok && !!post); show('saveBar', ok && !!post);
+    return ok;
+  }
+  $('loginForm').addEventListener('submit', async function (e) {
+    e.preventDefault(); $('loginMsg').textContent = 'Logging in…';
+    var r = await sb.auth.signInWithPassword({ email: $('loginEmail').value.trim(), password: $('loginPassword').value });
+    $('loginMsg').textContent = r.error ? r.error.message : '';
+    if (!r.error && await refreshSession()) loadList();
+  });
+  $('logoutBtn').addEventListener('click', async function (e) { e.preventDefault(); await sb.auth.signOut(); post = null; refreshSession(); });
+
+  // ---------- list ----------
+  async function loadList() {
+    var r = await sb.from('blog_posts').select('id, slug, title, status, event_date, published_at, updated_at').order('updated_at', { ascending: false });
+    if (r.error) { $('postRows').innerHTML = '<li>' + esc(r.error.message) + '</li>'; return; }
+    posts = r.data;
+    $('postRows').innerHTML = posts.length ? posts.map(function (p) {
+      var when = p.status === 'published' ? 'Published ' + F.fmtDate(p.published_at) : 'Edited ' + F.fmtDate(p.updated_at);
+      return '<li data-id="' + p.id + '"><div><div class="t">' + esc(p.title) + '</div><div class="m">' + esc(when) + '</div></div><span class="pill ' + p.status + '">' + (p.status === 'published' ? 'Live' : 'Draft') + '</span></li>';
+    }).join('') : '<li class="status">No posts yet. Tap “New post” to write your first one.</li>';
+    Array.prototype.forEach.call(document.querySelectorAll('#postRows li[data-id]'), function (li) {
+      li.addEventListener('click', function () { openPost(li.getAttribute('data-id')); });
+    });
+  }
+  $('newBtn').addEventListener('click', async function () {
+    var r = await sb.from('blog_posts').insert({ title: 'New post', slug: 'new-post-' + rand(6), status: 'draft' }).select('*').single();
+    if (r.error) return toast(r.error.message);
+    slugTouched = false; fill(r.data); setView();
+    $('fTitle').value = ''; $('fTitle').focus();
+  });
+
+  // ---------- editor ----------
+  async function openPost(id) {
+    var r = await sb.from('blog_posts').select('*').eq('id', id).single();
+    if (r.error) return toast(r.error.message);
+    slugTouched = true; fill(r.data); setView();
+  }
+  function fill(p) {
+    post = p; post.images = Array.isArray(p.images) ? p.images : [];
+    $('fTitle').value = p.title === 'New post' ? '' : p.title;
+    $('fDate').value = p.event_date || '';
+    $('fLocation').value = p.location || '';
+    $('fBody').value = p.body || '';
+    $('fExcerpt').value = p.excerpt || '';
+    $('fSlug').value = /^new-post-/.test(p.slug) ? '' : p.slug;
+    dirty = false; renderAll();
+  }
+  function setView() { window.scrollTo(0, 0); refreshSession(); }
+  $('backBtn').addEventListener('click', function () {
+    if (dirty && !confirm('You have unsaved changes. Leave without saving?')) return;
+    post = null; dirty = false; refreshSession(); loadList();
+  });
+
+  function currentSlug() { return slugify($('fSlug').value) || slugify($('fTitle').value) || post.slug; }
+  function formData() {
+    return {
+      title: $('fTitle').value.trim() || 'Untitled post',
+      slug: currentSlug(),
+      event_date: $('fDate').value || null,
+      location: $('fLocation').value.trim() || null,
+      body: $('fBody').value,
+      excerpt: $('fExcerpt').value.trim() || null,
+      images: post.images,
+      cover_url: post.cover_url || null
+    };
+  }
+  function renderAll() { renderStatus(); renderPhotos(); renderPreview(); }
+  function renderStatus() {
+    var live = post.status === 'published';
+    $('statusPill').className = 'pill ' + post.status; $('statusPill').textContent = live ? 'Live' : 'Draft';
+    $('publishBtn').textContent = live ? 'Update' : 'Publish';
+    $('saveBtn').textContent = live ? 'Unpublish' : 'Save draft';
+    $('slugShow').textContent = currentSlug();
+    show('viewBtn', live); $('viewBtn').href = '/blog/' + post.slug;
+    $('saveStatus').textContent = dirty ? 'Unsaved changes' : (live ? 'Live on your site' : 'Draft saved, only you can see it');
+  }
+  function renderPreview() {
+    var d = formData();
+    var cover = F.safeImg(d.cover_url);
+    var b = F.renderBody(d.body, d.images, d.title);
+    var meta = [d.event_date ? F.fmtDate(d.event_date) : '', d.location].filter(Boolean).join(' · ');
+    $('preview').innerHTML = '<h1>' + esc(d.title) + '</h1>' + (meta ? '<div class="meta">' + esc(meta) + '</div>' : '') +
+      (cover ? '<div class="cover"><img src="' + cover + '" alt=""></div>' : '') + (b.html || '<p class="status">Your story will show here.</p>') + F.restGrid(b.rest.filter(function (r) { return r.img.url !== cover; }), d.title);
+  }
+  ['fTitle', 'fDate', 'fLocation', 'fBody', 'fExcerpt', 'fSlug'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      if (id === 'fSlug') slugTouched = true;
+      if (id === 'fTitle' && !slugTouched) $('fSlug').value = slugify($('fTitle').value);
+      dirty = true; renderStatus(); clearTimeout(renderPreview._h); renderPreview._h = setTimeout(renderPreview, 250);
+    });
+  });
+  window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  async function save(patch, okMsg) {
+    var d = Object.assign(formData(), patch || {});
+    if (d.status === 'published') {
+      if (!$('fTitle').value.trim()) { toast('Add a title before publishing.'); $('fTitle').focus(); return false; }
+      if (!d.body.trim() && !d.images.length) { toast('Write something or add photos before publishing.'); return false; }
+    }
+    $('saveStatus').textContent = 'Saving…';
+    var r = await sb.from('blog_posts').update(d).eq('id', post.id).select('*').single();
+    if (r.error) {
+      var msg = r.error.code === '23505' ? 'Another post already uses that web address. Change it and try again.' : r.error.message;
+      $('saveStatus').textContent = 'Not saved'; toast(msg); return false;
+    }
+    post = r.data; post.images = Array.isArray(post.images) ? post.images : [];
+    $('fSlug').value = post.slug; dirty = false; renderAll(); if (okMsg) toast(okMsg); return true;
+  }
+  $('saveBtn').addEventListener('click', function () {
+    if (post.status === 'published') {
+      if (confirm('Take this post off your site? It stays here as a draft.')) save({ status: 'draft' }, 'Unpublished. It is now a draft.');
+    } else save({}, 'Draft saved.');
+  });
+  $('publishBtn').addEventListener('click', async function () {
+    var wasLive = post.status === 'published';
+    if (await save({ status: 'published' }, wasLive ? 'Updated. Changes can take a minute to show.' : 'Published! Tap View to see it and share it.')) {
+      if (!wasLive) show('viewBtn', true);
+    }
+  });
+  $('deleteBtn').addEventListener('click', async function () {
+    if (!confirm('Delete "' + (post.title || 'this post') + '" and its photos for good? This cannot be undone.')) return;
+    var files = await sb.storage.from('blog').list(post.id, { limit: 1000 });
+    if (files.data && files.data.length) await sb.storage.from('blog').remove(files.data.map(function (f) { return post.id + '/' + f.name; }));
+    var r = await sb.from('blog_posts').delete().eq('id', post.id);
+    if (r.error) return toast(r.error.message);
+    post = null; dirty = false; toast('Post deleted.'); refreshSession(); loadList();
+  });
+
+  // ---------- photos ----------
+  function renderPhotos() {
+    var imgs = post.images;
+    $('photoCount').textContent = imgs.length ? imgs.length + ' photo' + (imgs.length === 1 ? '' : 's') : '';
+    var cover = post.cover_url || (imgs[0] && imgs[0].url);
+    $('photos').innerHTML = imgs.map(function (im, i) {
+      var isCover = im.url === cover;
+      return '<div class="ph" data-i="' + i + '"><div class="im"><img src="' + esc(im.url) + '" alt="" loading="lazy"><span class="num">' + (i + 1) + '</span>' + (isCover ? '<span class="cov">Cover</span>' : '') + '</div>' +
+        '<input type="text" data-cap placeholder="Caption (optional)" maxlength="200" value="' + esc(im.caption || '') + '">' +
+        '<div class="acts"><button data-act="left" title="Move earlier">←</button><button data-act="right" title="Move later">→</button><button data-act="place" title="Put this photo where your cursor is in the story">Place</button>' +
+        '<button data-act="cover">' + (isCover ? '✓ Cover' : 'Cover') + '</button><button data-act="remove" style="color:#8c1d18">Remove</button></div></div>';
+    }).join('');
+  }
+  $('photos').addEventListener('click', async function (e) {
+    var b = e.target.closest('button[data-act]'); if (!b) return;
+    var i = +b.closest('.ph').getAttribute('data-i'), imgs = post.images, act = b.getAttribute('data-act');
+    if (act === 'left' && i > 0) { imgs.splice(i - 1, 0, imgs.splice(i, 1)[0]); }
+    else if (act === 'right' && i < imgs.length - 1) { imgs.splice(i + 1, 0, imgs.splice(i, 1)[0]); }
+    else if (act === 'cover') { post.cover_url = imgs[i].url; }
+    else if (act === 'place') {
+      var ta = $('fBody'), pos = ta.selectionStart != null ? ta.selectionStart : ta.value.length, tag = '\n\n[photo ' + (i + 1) + ']\n\n';
+      ta.value = (ta.value.slice(0, pos).replace(/\s+$/, '') + tag + ta.value.slice(pos).replace(/^\s+/, '')).replace(/^\s+/, '');
+      dirty = true; renderStatus(); renderPreview(); toast('Photo ' + (i + 1) + ' placed in your story.'); return;
+    }
+    else if (act === 'remove') {
+      if (!confirm('Remove photo ' + (i + 1) + '?')) return;
+      var gone = imgs.splice(i, 1)[0];
+      if (post.cover_url === gone.url) post.cover_url = null;
+      var path = gone.url.slice((F.IMG_PREFIX).length);
+      await sb.storage.from('blog').remove([path]);
+      if (/\[photo\s+\d+\]/i.test($('fBody').value)) toast('Photo removed. Check your [photo N] tags, the numbers after it moved up by one.');
+    } else return;
+    if (!post.cover_url) post.cover_url = imgs[0] ? imgs[0].url : null;
+    renderPhotos(); renderPreview(); await savePhotos();
+  });
+  $('photos').addEventListener('input', function (e) {
+    if (!e.target.hasAttribute('data-cap')) return;
+    var i = +e.target.closest('.ph').getAttribute('data-i');
+    post.images[i].caption = e.target.value.slice(0, 200);
+    dirty = true; renderStatus(); clearTimeout(renderPreview._h); renderPreview._h = setTimeout(renderPreview, 300);
+  });
+  // Photo changes save straight away so uploaded files are never lost.
+  async function savePhotos() {
+    var r = await sb.from('blog_posts').update({ images: post.images, cover_url: post.cover_url || null }).eq('id', post.id);
+    if (r.error) toast('Photos not saved: ' + r.error.message);
+  }
+
+  function loadImage(file) {
+    return new Promise(function (res, rej) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () { res(img); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); };
+      img.onerror = function () { URL.revokeObjectURL(url); rej(new Error('Could not read ' + file.name + '. Try a JPEG or PNG.')); };
+      img.src = url;
+    });
+  }
+  async function resize(file) {
+    var img = await loadImage(file);
+    var max = 2000, w = img.naturalWidth, h = img.naturalHeight, s = Math.min(1, max / Math.max(w, h));
+    var c = document.createElement('canvas'); c.width = Math.round(w * s); c.height = Math.round(h * s);
+    var x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+    var blob = await new Promise(function (r) { c.toBlob(r, 'image/jpeg', 0.85); });
+    return { blob: blob, w: c.width, h: c.height };
+  }
+  $('fileInput').addEventListener('change', async function () {
+    var files = Array.prototype.slice.call(this.files || []); this.value = '';
+    if (!files.length) return;
+    show('upProg', true); $('upBar').style.width = '0';
+    var done = 0, failed = [];
+    for (var k = 0; k < files.length; k++) {
+      var f = files[k];
+      try {
+        var out = await resize(f);
+        var name = (f.name.replace(/\.[^.]+$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'photo').slice(0, 40);
+        var path = post.id + '/' + Date.now() + '-' + rand(4) + '-' + name + '.jpg';
+        var up = await sb.storage.from('blog').upload(path, out.blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false });
+        if (up.error) throw up.error;
+        var pub = sb.storage.from('blog').getPublicUrl(path).data.publicUrl;
+        post.images.push({ url: pub, caption: '', w: out.w, h: out.h });
+        if (!post.cover_url) post.cover_url = pub;
+        await savePhotos(); renderPhotos(); renderPreview();
+      } catch (err) { failed.push(f.name + ': ' + (err.message || err)); }
+      done++; $('upBar').style.width = Math.round(done / files.length * 100) + '%';
+    }
+    setTimeout(function () { show('upProg', false); }, 800);
+    toast(failed.length ? failed.length + ' photo(s) failed. ' + failed[0] : done + ' photo' + (done === 1 ? '' : 's') + ' added.');
+  });
+
+  sb.auth.onAuthStateChange(function () { refreshSession(); });
+  refreshSession().then(function (ok) { if (ok) loadList(); });
+})();
+</script>
+</body>
+</html>
