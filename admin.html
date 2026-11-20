@@ -142,6 +142,11 @@
     var exp = await sb.from('galleries').select('id', { count: 'exact', head: true }).eq('status', 'live').lt('expires_at', day(0));
     var overdue = exp.count || 0;
     rows.push('<li><span>Expired galleries waiting to be deleted</span><span class="' + (overdue ? 'bad">' + overdue + ' (open Client galleries to clear)' : 'ok">None') + '</span></li>');
+    var st = await sb.from('system_status').select('value, updated_at').eq('key', 'nightly_cleanup').maybeSingle();
+    var last = st.data ? new Date(st.data.updated_at) : null;
+    var fresh = last && (Date.now() - last.getTime()) < 36 * 3600e3;
+    var when = last ? last.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' (' + st.data.value.via + ')' : 'never';
+    rows.push('<li><span>Nightly clean-up last ran</span><span class="' + (fresh ? 'ok">' : 'bad">') + when + '</span></li>');
     $('health').innerHTML = rows.join('');
   }
 
