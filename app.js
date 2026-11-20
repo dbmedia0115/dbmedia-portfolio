@@ -1424,31 +1424,33 @@
     status.textContent = 'Sending…';
 
     try {
-      var res = await fetch('https://api.web3forms.com/submit', {
+      var res = await fetch(SUPABASE_URL + '/functions/v1/gallery', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_PUBLISHABLE_KEY },
         body: JSON.stringify({
-          access_key: 'c6bf49f1-9da0-4713-8f54-7cb0dd0f5a16',
-          subject: 'New enquiry: ' + shootType + (shootDate ? ' on ' + shootDate : '') + ' — ' + name,
-          from_name: 'Dream Big Media website',
+          action: 'contact',
           name: name,
           email: email,
-          shoot_type: shootType,
-          date: shootDate || 'Not given',
-          location: location || 'Not given',
-          budget: budget || 'Not sure yet',
-          found_via: source || 'Not given',
-          message: message
+          shootType: shootType,
+          date: shootDate,
+          location: location,
+          budget: budget,
+          source: source,
+          message: message,
+          website: el('dbmContactWebsite') ? el('dbmContactWebsite').value : ''
         })
       });
-      var result = await res.json();
-      if (!result.success) throw new Error(result.message || 'Send failed');
+      var result = await res.json().catch(function () { return {}; });
+      if (res.status === 429) throw new Error('too_many');
+      if (!res.ok || !result.ok) throw new Error(result.error || 'Send failed');
       status.textContent = 'Thanks ' + name.split(' ')[0] + ", your enquiry's in. I'll be in touch soon.";
       dbmTrack('generate_lead', { shoot_type: shootType, budget: budget || 'not_sure', found_via: source || 'not_given', has_date: shootDate ? 'yes' : 'no', currency: 'GBP' });
       el('dbmContactForm').reset();
     } catch (err) {
       console.error(err);
-      status.textContent = 'Something went wrong sending that. Please try emailing directly instead.';
+      status.textContent = err && err.message === 'too_many'
+        ? "You've sent a few already. Please wait a little or email directly."
+        : 'Something went wrong sending that. Please try emailing directly instead.';
       dbmTrack('form_error', { form_name: 'enquiry', reason: 'send_failed' });
     } finally {
       submitBtn.disabled = false;
