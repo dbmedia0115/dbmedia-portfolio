@@ -575,7 +575,7 @@
 
   // ---------- reviews & prints ----------
   // Optional: paste your Google review link here to offer it after a review.
-  var GOOGLE_REVIEW_URL = '';
+  var GOOGLE_REVIEW_URL = 'https://g.page/r/CQFiss51VsEGEBM/review';
   var PRINT_PRODUCTS = ['Photo print (lustre)', 'Fine art print', 'Canvas', 'Framed print'];
   var PRINT_SIZES = ['6x4"', '7x5"', '10x8"', 'A4', '12x8"', 'A3', '16x12"', '20x16"', 'A2', '30x20"'];
   var NUDGE = '<p style="margin-top:14px">Happy with your photos? <a href="#" data-review>Leave a quick review</a>. It really helps.</p>';
@@ -607,7 +607,7 @@
       if (!email) { email = em.toLowerCase(); storeLocal('dbm_gallery_email', email); }
       try { gtag('event', 'gallery_review', { rating: rating }); } catch (e) {}
       dlShow('Thank you!', '<p>Thanks ' + esc(name.split(' ')[0]) + ', your review means a lot.</p>' +
-        (GOOGLE_REVIEW_URL && rating >= 4 ? '<p>Would you also post it on Google? It helps other people find me.</p><div class="row"><a class="btn primary" href="' + esc(GOOGLE_REVIEW_URL) + '" target="_blank" rel="noopener">Review on Google</a><button class="btn" data-close>Done</button></div>' : '<div class="row"><button class="btn primary" data-close>Done</button></div>'));
+        (GOOGLE_REVIEW_URL ? '<p>Would you also post it on Google? It helps other people find me.</p><div class="row"><a class="btn primary" href="' + esc(GOOGLE_REVIEW_URL) + '" target="_blank" rel="noopener">Review on Google</a><button class="btn" data-close>Done</button></div>' : '<div class="row"><button class="btn primary" data-close>Done</button></div>'));
     });
   }
   $('reviewBtn').addEventListener('click', openReview);
