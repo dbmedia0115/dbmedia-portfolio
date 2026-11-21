@@ -779,7 +779,7 @@
       padding: 10px 16px;
     }
     .dbm-admin-bar > div { width: 100%; display: flex; flex-direction: column; gap: 8px; }
-    .dbm-admin-bar button { flex: 1; width: 100%; }
+    .dbm-admin-bar button, .dbm-admin-bar .dbm-admin-link { flex: 1; width: 100%; padding: 8px 12px; }
 
     .dbm-card-move button, .dbm-card-cover-btn { width: 30px; height: 30px; }
 
@@ -846,6 +846,12 @@
     justify-content: space-between;
   }
   .dbm-admin-bar.show { display: flex; }
+  .dbm-admin-bar .dbm-admin-link {
+    border: 1px solid var(--paper); color: var(--paper); text-decoration: none;
+    padding: 4px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .dbm-admin-bar .dbm-admin-link-main { background: var(--paper); color: var(--ink); font-weight: 700; }
   .dbm-admin-bar button {
     background: none; border: 1px solid var(--paper); color: var(--paper);
     padding: 4px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
@@ -1038,7 +1044,10 @@
 
   <div class="dbm-admin-bar" id="dbmAdminBar">
     <span>Logged in as admin &mdash; Organize mode available</span>
-    <div style="display:flex; gap:8px;">
+    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+      <a class="dbm-admin-link dbm-admin-link-main" href="/gallery-admin.html">Client galleries</a>
+      <a class="dbm-admin-link" href="/blog-admin.html">Blog</a>
+      <a class="dbm-admin-link" href="/admin.html">Admin home</a>
       <button id="dbmSiteSettingsBtn">Edit site text &amp; colors</button>
       <button id="dbmTestimonialsBtn">Edit testimonials</button>
       <button id="dbmLogoutBtn">Log out</button>
