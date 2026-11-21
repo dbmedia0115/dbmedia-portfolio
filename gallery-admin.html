@@ -7,7 +7,7 @@
 <title>Client Galleries — Admin | Dream Big Media</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600&family=Great+Vibes&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&family=Great+Vibes&family=Cormorant+Garamond:wght@600&family=Cinzel:wght@600&family=Montserrat:wght@300&family=Bebas+Neue&family=Special+Elite&family=Caveat:wght@700&family=Allura&display=swap');
   :root { --ink:#0a0a0a; --paper:#f5f5f0; --accent:#8c1d18; --line:#d8d6cf; --muted:#6b6a64; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink); font-size:14px; }
@@ -69,9 +69,23 @@
   .cf-box::after { content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.6), rgba(0,0,0,0) 60%); }
   .cf-t { position:absolute; left:7px; right:7px; bottom:7px; z-index:1; color:#fff; line-height:1.05; font-family:'Archivo Black',sans-serif; text-transform:uppercase; overflow-wrap:anywhere; }
   .cf-box[data-align="center"] .cf-t { text-align:center; }
-  .cf-box[data-font="elegant"] .cf-t { font-family:'Playfair Display',Georgia,serif; font-weight:600; text-transform:none; }
-  .cf-box[data-font="clean"] .cf-t { font-family:'Inter',sans-serif; font-weight:700; text-transform:none; }
-  .cf-box[data-font="script"] .cf-t { font-family:'Great Vibes',cursive; font-weight:400; text-transform:none; }
+  .cf-box[data-font="bold"] .cf-t, .fontgrid button[data-v="bold"] { font-family:'Archivo Black',sans-serif; font-weight:400; text-transform:uppercase; }
+  .cf-box[data-font="elegant"] .cf-t, .fontgrid button[data-v="elegant"] { font-family:'Playfair Display',Georgia,serif; font-weight:600; text-transform:none; }
+  .cf-box[data-font="italic"] .cf-t, .fontgrid button[data-v="italic"] { font-family:'Playfair Display',Georgia,serif; font-weight:600; font-style:italic; text-transform:none; }
+  .cf-box[data-font="classic"] .cf-t, .fontgrid button[data-v="classic"] { font-family:'Cormorant Garamond',Georgia,serif; font-weight:600; text-transform:none; }
+  .cf-box[data-font="luxe"] .cf-t, .fontgrid button[data-v="luxe"] { font-family:'Cinzel',Georgia,serif; font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+  .cf-box[data-font="clean"] .cf-t, .fontgrid button[data-v="clean"] { font-family:'Inter',sans-serif; font-weight:700; text-transform:none; }
+  .cf-box[data-font="minimal"] .cf-t, .fontgrid button[data-v="minimal"] { font-family:'Montserrat',sans-serif; font-weight:300; text-transform:uppercase; letter-spacing:.18em; }
+  .cf-box[data-font="condensed"] .cf-t, .fontgrid button[data-v="condensed"] { font-family:'Bebas Neue',sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:.03em; }
+  .cf-box[data-font="typewriter"] .cf-t, .fontgrid button[data-v="typewriter"] { font-family:'Special Elite',monospace; font-weight:400; text-transform:none; }
+  .cf-box[data-font="hand"] .cf-t, .fontgrid button[data-v="hand"] { font-family:'Caveat',cursive; font-weight:700; text-transform:none; }
+  .cf-box[data-font="script"] .cf-t, .fontgrid button[data-v="script"] { font-family:'Great Vibes',cursive; font-weight:400; text-transform:none; }
+  .cf-box[data-font="signature"] .cf-t, .fontgrid button[data-v="signature"] { font-family:'Allura',cursive; font-weight:400; text-transform:none; }
+  .fontgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .fontgrid button { padding:9px 4px; border:1.5px solid var(--ink); background:#fff; color:var(--ink); font-size:15px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fontgrid button[data-v="script"], .fontgrid button[data-v="signature"], .fontgrid button[data-v="hand"] { font-size:20px; padding:5px 4px; }
+  .fontgrid button[data-v="minimal"], .fontgrid button[data-v="luxe"] { font-size:12px; }
+  .fontgrid button.on { background:var(--ink); color:#fff; }
   .cf-opts { display:grid; grid-template-columns:1fr; gap:2px; margin-top:14px; max-width:360px; }
   .seg { display:flex; gap:0; } .seg button { flex:1; padding:8px 6px; border:1.5px solid var(--ink); margin-left:-1.5px; background:#fff; font:600 13px 'Inter',sans-serif; cursor:pointer; }
   .seg button:first-child { margin-left:0; } .seg button.on { background:var(--ink); color:#fff; }
@@ -178,7 +192,7 @@
             <label for="cfTitle">Title</label>
             <input type="text" id="cfTitle" maxlength="120">
             <label>Style</label>
-            <div class="seg" id="cfFont"><button data-v="bold">Bold</button><button data-v="elegant" style="font-family:'Playfair Display',serif">Elegant</button><button data-v="clean">Clean</button><button data-v="script" style="font-family:'Great Vibes',cursive;font-size:17px">Script</button></div>
+            <div class="fontgrid" id="cfFont"><button data-v="bold">Bold</button><button data-v="elegant">Elegant</button><button data-v="italic">Italic</button><button data-v="classic">Classic</button><button data-v="luxe">Luxe</button><button data-v="clean">Clean</button><button data-v="minimal">Minimal</button><button data-v="condensed">Bold Tall</button><button data-v="typewriter">Typewriter</button><button data-v="hand">Handwritten</button><button data-v="script">Script</button><button data-v="signature">Signature</button></div>
             <label>Size</label>
             <div class="seg" id="cfSize"><button data-v="s">S</button><button data-v="m">M</button><button data-v="l">L</button><button data-v="xl">XL</button></div>
             <label>Position</label>
@@ -350,8 +364,9 @@
     $('regHint').textContent = 'Upload into galleries/' + g.id + '/video/ or /zip/';
   }
   async function patchGallery(patch) {
-    var r = await sb.from('galleries').update(patch).eq('id', current.id).select().single();
+    var r = await sb.from('galleries').update(patch).eq('id', current.id).select().maybeSingle();
     if (r.error) { toast(r.error.message); return false; }
+    if (!r.data) { toast('This gallery no longer exists. Refresh the page to see your galleries.'); return false; }
     current = r.data; renderHeader(); return true;
   }
   $('publishBtn').addEventListener('click', async function () {
@@ -444,6 +459,7 @@
   // ---------- cover focus ----------
   var cfFocus = '50% 50%';
   var cfStyle = { font: 'bold', size: 'm', align: 'left' };
+  var CF_K = { classic: 1.12, luxe: .85, minimal: .78, condensed: 1.22, typewriter: .9, hand: 1.25, script: 1.35, signature: 1.4 };
   var CF_PX = { phone: { s: 9, m: 11, l: 14, xl: 18 }, desk: { s: 8, m: 10, l: 13, xl: 17 } };
   function cfDirty() {
     return cfFocus !== (current.cover_focus || '50% 50%') || $('cfTitle').value.trim() !== current.title ||
@@ -453,7 +469,7 @@
     var t = $('cfTitle').value.trim() || current.title;
     [['cfPhone', 'phone'], ['cfDesk', 'desk']].forEach(function (b) {
       var box = $(b[0]); box.dataset.font = cfStyle.font; box.dataset.align = cfStyle.align;
-      var px = CF_PX[b[1]][cfStyle.size] * (cfStyle.font === 'script' ? 1.35 : 1);
+      var px = CF_PX[b[1]][cfStyle.size] * (CF_K[cfStyle.font] || 1);
       var el = box.querySelector('.cf-t'); el.textContent = t; el.style.fontSize = px + 'px';
     });
     ['cfFont', 'cfSize', 'cfAlign'].forEach(function (id) {
