@@ -485,16 +485,37 @@
     if (!dlCancel) dlShow('Downloads started', '<p>All ' + list.length + ' files have been sent to your Downloads folder.</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE);
   }
 
-  // Phones: fetch originals in groups of 10, then a tap opens the share sheet
+  // Phones: fetch originals in small groups, then a tap opens the share sheet
   // ("Save Images" / "Save Video") so they land in the camera roll at full size.
+  // Big films are never loaded into the phone's memory: they download straight
+  // to the phone as files, still the untouched original.
+  var PHONE_BIG = 300 * 1024 * 1024, PHONE_BATCH_BYTES = 400 * 1024 * 1024;
   async function saveToPhone(items) {
     dlCancel = false;
     var files = await links(items.map(function (it) { return it.id; })); if (!files) return;
-    var batches = []; for (var i = 0; i < files.length; i += 10) batches.push(files.slice(i, i + 10));
-    var b = 0;
+    var bigFiles = files.filter(function (f) { return (f.size || 0) > PHONE_BIG; });
+    var small = files.filter(function (f) { return (f.size || 0) <= PHONE_BIG; });
+    var batches = [], cur = [], curBytes = 0;
+    small.forEach(function (f) {
+      if (cur.length && (cur.length >= 10 || curBytes + (f.size || 0) > PHONE_BATCH_BYTES)) { batches.push(cur); cur = []; curBytes = 0; }
+      cur.push(f); curBytes += f.size || 0;
+    });
+    if (cur.length) batches.push(cur);
+    var b = 0, startAt = 0;
+    function plainDownload(f) { var a = document.createElement('a'); a.href = f.url; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); }
+    function showBig() {
+      var rows = bigFiles.map(function (f, n) {
+        return '<div class="row" style="justify-content:space-between;align-items:center;margin:8px 0"><span class="small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%">' + esc(f.fileName) + ' · ' + fmtSize(f.size) + '</span><button class="btn" data-big="' + n + '">Download</button></div>';
+      }).join('');
+      dlShow(bigFiles.length === 1 ? 'Download your film' : 'Download your films', '<p>' + (bigFiles.length === 1 ? 'This film is' : 'These films are') + ' too big to save through the share sheet, so ' + (bigFiles.length === 1 ? 'it downloads' : 'they download') + ' as the full-quality original. Use Wi-Fi. On iPhone it goes to the Files app (Downloads); open it there and tap Share, then <b>Save Video</b> to put it in Photos.</p>' + rows +
+        '<div class="row" style="margin-top:10px"><button class="btn primary" data-close>Done</button></div>');
+      Array.prototype.forEach.call(document.querySelectorAll('[data-big]'), function (btn) {
+        btn.addEventListener('click', function () { plainDownload(bigFiles[+btn.dataset.big]); btn.textContent = 'Started'; btn.disabled = true; });
+      });
+    }
     async function prepare() {
-      var batch = batches[b];
-      dlShow(files.length > 1 ? 'Save to your phone' : 'Save to your phone', '<p id="dlMsg">Getting full-resolution files ' + (b * 10 + 1) + '–' + (b * 10 + batch.length) + ' of ' + files.length + '…</p><div class="prog"><div id="dlBar"></div></div><div class="row"><button class="btn" data-close>Cancel</button></div>');
+      var batch = batches[b], from = startAt + 1, to = startAt + batch.length;
+      dlShow('Save to your phone', '<p id="dlMsg">Getting full-resolution files ' + from + '–' + to + ' of ' + small.length + '…</p><div class="prog"><div id="dlBar"></div></div><div class="row"><button class="btn" data-close>Cancel</button></div>');
       var got = [], loaded = 0, total = batch.reduce(function (a, f) { return a + (f.size || 0); }, 0) || 1;
       for (var k = 0; k < batch.length && !dlCancel; k++) {
         var f = batch[k];
@@ -507,20 +528,23 @@
       }
       if (dlCancel) return;
       var last = b === batches.length - 1;
-      dlShow('Ready to save', '<p>' + got.length + ' file' + (got.length === 1 ? '' : 's') + ' ready (' + (b * 10 + 1) + '–' + (b * 10 + batch.length) + ' of ' + files.length + '). Tap Save, then choose <b>Save Images</b> or <b>Save Video</b>.</p>' +
+      dlShow('Ready to save', '<p>' + got.length + ' file' + (got.length === 1 ? '' : 's') + ' ready (' + from + '–' + to + ' of ' + small.length + '). Tap Save, then choose <b>Save Images</b> or <b>Save Video</b>.</p>' +
         '<div class="row"><button class="btn primary" id="dlShare">Save ' + got.length + ' to phone</button><button class="btn" data-close>Cancel</button></div>' +
         '<p class="small" style="margin-top:10px"><a href="#" id="dlPlain">Download as files instead</a></p>');
-      $('dlPlain').addEventListener('click', function (e) { e.preventDefault(); batch.forEach(function (f, n) { setTimeout(function () { var a = document.createElement('a'); a.href = f.url; document.body.appendChild(a); a.click(); a.remove(); }, n * 1200); }); next(); });
+      $('dlPlain').addEventListener('click', function (e) { e.preventDefault(); batch.forEach(function (f, n) { setTimeout(function () { plainDownload(f); }, n * 1200); }); next(); });
       $('dlShare').addEventListener('click', async function () {
-        try { await navigator.share({ files: got }); } catch (e) { if (e && e.name === 'AbortError') return; toast('Your phone couldn’t share these. Using normal download.'); batch.forEach(function (f) { var a = document.createElement('a'); a.href = f.url; document.body.appendChild(a); a.click(); a.remove(); }); }
+        try { await navigator.share({ files: got }); } catch (e) { if (e && e.name === 'AbortError') return; toast('Your phone couldn’t share these. Using normal download.'); batch.forEach(function (f) { plainDownload(f); }); }
         next();
       });
       function next() {
-        if (last) { dlShow('All done', '<p>All ' + files.length + ' file' + (files.length === 1 ? '' : 's') + ' sent to your phone.</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE); return; }
-        b++; prepare();
+        if (last) {
+          if (bigFiles.length) { showBig(); return; }
+          dlShow('All done', '<p>All ' + small.length + ' file' + (small.length === 1 ? '' : 's') + ' sent to your phone.</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE); return;
+        }
+        startAt += batch.length; b++; prepare();
       }
     }
-    prepare();
+    if (batches.length) prepare(); else showBig();
   }
 
   // ---------- choose photos to download ----------
