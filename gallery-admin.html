@@ -89,7 +89,7 @@
         <div class="grid2">
           <div><label>Gallery title</label><input type="text" id="nTitle" placeholder="e.g. Ama &amp; Kofi — Wedding" required maxlength="120"></div>
           <div><label>Client name</label><input type="text" id="nClient" placeholder="e.g. Ama" maxlength="120"></div>
-          <div><label>Client email</label><input type="email" id="nEmail" placeholder="client@email.com" maxlength="200"></div>
+          <div><label>Client email (they log in with this)</label><input type="email" id="nEmail" placeholder="client@email.com" maxlength="200" required></div>
           <div><label>Private notes (only you see these)</label><input type="text" id="nNotes" maxlength="500"></div>
         </div>
         <div class="row" style="margin-top:16px"><button class="btn primary" type="submit">Create gallery</button><button class="btn" type="button" id="cancelNew">Cancel</button></div>
@@ -346,6 +346,7 @@
     var link = SITE + '/gallery.html?g=' + current.slug;
     var first = (current.client_name || '').split(' ')[0] || 'there';
     var text = 'Hi ' + first + ',\n\nYour photos are ready! You can view and download them here:\n\n' + link + '\n\nGallery PIN: ' + pin + '\n\n' +
+      (current.client_email ? 'Lost this link? Go to ' + SITE + '/client/ and log in with ' + current.client_email + ' and the PIN above.\n\n' : '') +
       (current.expires_at ? 'The gallery is available until ' + fmtDate(current.expires_at) + '. After that date the files are permanently deleted from our servers, so please download everything you want to keep before then.\n\n' : '') +
       'Tap the heart on your favourites if you\'d like to pick images for prints or edits.\n\nThank you for choosing Dream Big Media.\n\nSamuel\nDream Big Media · dreambigmedia.co.uk';
     $('pinShow').textContent = pin;
