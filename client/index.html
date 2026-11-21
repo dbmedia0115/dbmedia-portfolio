@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client login | Dream Big Media</title>
+<meta name="description" content="View and download your Dream Big Media photos and films. Enter the email and PIN from your gallery invite.">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="canonical" href="https://www.dreambigmedia.co.uk/client/">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap');
+  :root { --ink:#0a0a0a; --paper:#f5f5f0; --accent:#8c1d18; --line:#d8d6cf; --muted:#6b6a64; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; }
+  a { color:inherit; }
+  main { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:28px 16px; }
+  .brand { font-family:'Archivo Black',sans-serif; text-transform:uppercase; font-size:14px; letter-spacing:.06em; text-decoration:none; }
+  .box { width:100%; max-width:400px; border:1.5px solid var(--ink); background:#fff; padding:32px 26px; margin-top:18px; }
+  h1 { font-family:'Archivo Black',sans-serif; font-weight:400; text-transform:uppercase; font-size:22px; margin-bottom:6px; }
+  p { color:var(--muted); font-size:14px; line-height:1.5; }
+  label { display:block; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin:18px 0 6px; }
+  input { width:100%; padding:13px 12px; border:1.5px solid var(--ink); font:16px 'Inter',sans-serif; background:#fff; }
+  #pin { font:700 24px ui-monospace,Consolas,monospace; letter-spacing:.35em; text-align:center; }
+  #msg { min-height:20px; font-size:13px; color:var(--accent); margin:12px 0 10px; }
+  .btn { display:flex; width:100%; align-items:center; justify-content:center; border:1.5px solid var(--accent); background:var(--accent); color:#fff; padding:13px 18px; font:600 15px 'Inter',sans-serif; cursor:pointer; text-decoration:none; }
+  .btn:disabled { opacity:.6; cursor:wait; }
+  .btn.alt { background:#fff; color:var(--ink); border-color:var(--ink); margin-top:10px; }
+  .hidden { display:none !important; }
+  .small { margin-top:18px; font-size:12px; color:var(--muted); text-align:center; }
+</style>
+</head>
+<body>
+<main>
+  <a class="brand" href="/">Dream Big Media</a>
+
+  <div class="box" id="loginBox">
+    <h1>Client login</h1>
+    <p>Enter the email and PIN from your gallery invite to view and download your photos and films. No account needed.</p>
+    <form id="form" novalidate>
+      <label for="email">Your email</label>
+      <input id="email" type="email" autocomplete="email" required maxlength="200" placeholder="you@email.com">
+      <label for="pin">Gallery PIN</label>
+      <input id="pin" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="8" placeholder="••••" required>
+      <div id="msg" role="alert"></div>
+      <button class="btn" id="go" type="submit">View my gallery</button>
+    </form>
+  </div>
+
+  <div class="box hidden" id="pickBox">
+    <h1>Your galleries</h1>
+    <p>Choose the gallery you'd like to open.</p>
+    <div id="pickList" style="margin-top:16px"></div>
+  </div>
+
+  <p class="small">Lost your PIN or using a different email? <a href="/#contact">Contact Dream Big Media</a> and I'll resend your link.</p>
+</main>
+
+<script src="/config.js"></script>
+<script>
+(function () {
+  var FN = SUPABASE_URL + '/functions/v1/gallery';
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function setSS(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+  function setLS(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  try { var last = localStorage.getItem('dbm_gallery_email'); if (last) $('email').value = last; } catch (e) {}
+  ($('email').value ? $('pin') : $('email')).focus();
+
+  // Hand the session over to the gallery page, so the client doesn't type the PIN twice.
+  function openGallery(g, email, pin) {
+    setSS('dbm_gallery_' + g.slug, g.token);
+    setSS('dbm_pin_' + g.slug, pin);
+    setLS('dbm_gallery_email', email);
+    location.href = '/gallery.html?g=' + encodeURIComponent(g.slug);
+  }
+
+  $('form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var email = $('email').value.trim().toLowerCase();
+    var pin = $('pin').value.replace(/\D/g, '');
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $('msg').textContent = 'Enter the email your invite was sent to.'; $('email').focus(); return; }
+    if (pin.length < 4) { $('msg').textContent = 'Enter the PIN from your invite.'; $('pin').focus(); return; }
+    $('go').disabled = true; $('msg').textContent = '';
+    var res, d;
+    try {
+      res = await fetch(FN, { method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_PUBLISHABLE_KEY }, body: JSON.stringify({ action: 'find', email: email, pin: pin }) });
+      d = await res.json().catch(function () { return {}; });
+    } catch (err) { d = { error: 'network' }; }
+    $('go').disabled = false;
+    if (d.galleries && d.galleries.length === 1) { openGallery(d.galleries[0], email, pin); return; }
+    if (d.galleries && d.galleries.length > 1) {
+      $('loginBox').classList.add('hidden'); $('pickBox').classList.remove('hidden');
+      $('pickList').innerHTML = d.galleries.map(function (g, i) { return '<button class="btn alt" data-i="' + i + '">' + esc(g.title) + '</button>'; }).join('');
+      $('pickList').addEventListener('click', function (ev) { var b = ev.target.closest('[data-i]'); if (b) openGallery(d.galleries[+b.dataset.i], email, pin); });
+      return;
+    }
+    if (d.error === 'locked') { $('msg').textContent = 'Too many tries. Please wait ' + d.minutes + ' minutes and try again.'; return; }
+    if (d.error === 'no_match') {
+      $('msg').textContent = 'That email and PIN don’t match a live gallery.' + (d.attemptsLeft <= 2 ? ' ' + d.attemptsLeft + ' tries left.' : '');
+      $('pin').select(); return;
+    }
+    $('msg').textContent = 'Something went wrong. Please try again.';
+  });
+})();
+</script>
+</body>
+</html>
