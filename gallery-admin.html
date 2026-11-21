@@ -407,13 +407,16 @@
     current.pin_hash = 'set';
     var link = SITE + '/gallery.html?g=' + current.slug;
     var first = (current.client_name || '').split(' ')[0] || 'there';
-    var text = 'Hi ' + first + ',\n\nYour photos are ready! You can view and download them here:\n\n' + link + '\n\nGallery PIN: ' + pin + '\n\n' +
-      (current.client_email ? 'Lost this link? Go to ' + SITE + '/client/ and log in with ' + current.client_email + ' and the PIN above.\n\n' : '') +
-      (current.expires_at ? 'The gallery is available until ' + fmtDate(current.expires_at) + '. After that date the files are permanently deleted from our servers, so please download everything you want to keep before then.\n\n' : '') +
-      'Tap the heart on your favourites if you\'d like to pick images for prints or edits.\n\nThank you for choosing Dream Big Media.\n\nSamuel\nDream Big Media · dreambigmedia.co.uk';
+    var text = 'Hi ' + first + ',\n\n' +
+      'Thank you so much for choosing Dream Big Media. It was a pleasure working with you, and your photos are ready.\n\n' +
+      'View and download them here:\n' + link + '\n\n' +
+      'Your PIN: ' + pin + '\n\n' +
+      'Everything is in full resolution, ready to print, post and share.' +
+      (current.expires_at ? ' The gallery stays open until ' + fmtDate(current.expires_at) + ', so save your favourites before then.' : '') + '\n\n' +
+      'Enjoy your images!\n\nSamuel\nDream Big Media';
     $('pinShow').textContent = pin;
     $('inviteText').value = text;
-    var subject = 'Your gallery is ready — ' + current.title;
+    var subject = 'Your photos are ready';
     $('mailInvite').href = 'mailto:' + encodeURIComponent(current.client_email || '') + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text);
     show('inviteBox', true);
     try { await navigator.clipboard.writeText(text); toast('Invite copied. PIN ' + pin); } catch (e) { toast('PIN ' + pin + ' — copy the text below.'); }
