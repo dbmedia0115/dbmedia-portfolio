@@ -71,6 +71,23 @@
   .tile .play span { width:64px; height:64px; border-radius:50%; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; }
   .tile .play span::after { content:''; border-left:20px solid #fff; border-top:12px solid transparent; border-bottom:12px solid transparent; margin-left:5px; }
   .tile .heart { position:absolute; right:8px; top:8px; }
+  /* Scroll-in animation: photos rise and fade in as they come into view */
+  .tile { overflow:hidden; }
+  .tile img { opacity:0; transition:opacity .7s ease, transform 1.1s cubic-bezier(.2,.7,.2,1); }
+  .tile img.ld { opacity:1; }
+  .rv { opacity:0; transform:translateY(36px) scale(.98); transition:opacity .9s cubic-bezier(.2,.7,.2,1), transform 1s cubic-bezier(.2,.7,.2,1); }
+  .rv.in { opacity:1; transform:none; }
+  section.set h2.rv { transform:translateY(18px); }
+  @media (hover:hover) { .tile:hover img.ld { transform:scale(1.04); } }
+  .hero { overflow:hidden; }
+  .hero-in .inner > * { opacity:0; transform:translateY(20px); animation:heroIn 1s cubic-bezier(.2,.7,.2,1) forwards; }
+  .hero-in .inner > *:nth-child(2) { animation-delay:.15s; }
+  .hero-in .inner > *:nth-child(3) { animation-delay:.3s; }
+  @keyframes heroIn { to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .rv, .tile img { opacity:1 !important; transform:none !important; transition:none !important; }
+    .hero-in .inner > * { animation:none; opacity:1; transform:none; }
+  }
   .heart { width:36px; height:36px; border-radius:50%; border:0; background:rgba(255,255,255,.9); cursor:pointer; display:flex; align-items:center; justify-content:center; }
   .heart svg { width:18px; height:18px; fill:none; stroke:var(--ink); stroke-width:2; }
   .heart.on svg { fill:var(--accent); stroke:var(--accent); }
@@ -288,6 +305,7 @@
     email = readLocal('dbm_gallery_email') || '';
     $('gate').classList.add('hidden'); $('app').classList.remove('hidden');
     document.title = d.title + ' | Dream Big Media';
+    if (!REDUCED) $('hero').classList.add('hero-in');
     render();
     if (email) loadFavs();
     clearInterval(refreshTimer);
@@ -315,17 +333,60 @@
       var tiles = s.items.filter(function (it) { return !showFavsOnly || favs[it.id]; }).map(function (it) {
         var idx = flat.push(it) - 1;
         var ratio = it.width && it.height ? ' style="aspect-ratio:' + it.width + '/' + it.height + '"' : '';
-        return '<div class="tile' + (picked[it.id] ? ' picked' : '') + '" data-i="' + idx + '"' + ratio + '>' +
+        return '<div class="tile' + (picked[it.id] ? ' picked' : '') + '" data-i="' + idx + '" data-id="' + esc(it.id) + '"' + ratio + '>' +
           '<span class="tick">✓</span>' +
           (it.thumb ? '<img loading="lazy" decoding="async" src="' + esc(it.thumb) + '" alt="">' : '') +
           (it.kind === 'video' ? '<div class="play"><span></span></div>' : '') +
           '<button class="heart' + (favs[it.id] ? ' on' : '') + '" data-fav="' + it.id + '" aria-label="Favourite">' + HEART + '</button></div>';
       }).join('');
       if (!tiles) return '';
-      return '<section class="set" id="set-' + si + '"><h2>' + esc(s.name) + '</h2><div class="grid">' + tiles + '</div></section>';
+      return '<section class="set" id="set-' + si + '"><h2 data-id="set:' + esc(s.name) + '">' + esc(s.name) + '</h2><div class="grid">' + tiles + '</div></section>';
     }).join('');
     $('sets').innerHTML = html || '<p class="empty">' + (showFavsOnly ? 'No favourites yet — tap the heart on any photo.' : 'This gallery is empty.') + '</p>';
+    reveal();
     if (keepScroll) window.scrollTo(0, y);
+  }
+
+  // ---------- scroll-in animation ----------
+  var REDUCED = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var seen = {}, loadedImg = {};
+  var revealObs = !REDUCED && 'IntersectionObserver' in window ? new IntersectionObserver(function (entries) {
+    entries.filter(function (e) { return e.isIntersecting; })
+      .sort(function (a, b) { return (a.boundingClientRect.top - b.boundingClientRect.top) || (a.boundingClientRect.left - b.boundingClientRect.left); })
+      .forEach(function (e, n) {
+        var el = e.target;
+        el.style.transitionDelay = Math.min(n, 8) * 70 + 'ms';
+        el.classList.add('in'); revealObs.unobserve(el);
+        if (el.dataset.id) seen[el.dataset.id] = true;
+        setTimeout(function () { el.style.transitionDelay = ''; }, 1600);
+      });
+  }, { rootMargin: '0px 0px -6% 0px', threshold: 0.06 }) : null;
+  function reveal() {
+    Array.prototype.forEach.call($('sets').querySelectorAll('.tile, section.set h2'), function (el) {
+      if (!revealObs || seen[el.dataset.id]) return; // already shown: no replay
+      el.classList.add('rv'); revealObs.observe(el);
+    });
+    Array.prototype.forEach.call($('sets').querySelectorAll('.tile img'), function (img) {
+      var id = img.parentNode.dataset.id;
+      var done = function () { img.classList.add('ld'); loadedImg[id] = true; };
+      if (REDUCED || loadedImg[id] || (img.complete && img.naturalWidth)) done();
+      else { img.addEventListener('load', done, { once: true }); img.addEventListener('error', done, { once: true }); }
+    });
+  }
+  // Cover: title glides in, then drifts up and fades as you scroll into the photos.
+  if (!REDUCED) {
+    var heroTick = false;
+    window.addEventListener('scroll', function () {
+      if (heroTick) return; heroTick = true;
+      requestAnimationFrame(function () {
+        heroTick = false;
+        var h = $('hero'), H = h.offsetHeight || 1, y = window.scrollY;
+        if (y > H * 1.2) return;
+        var inner = h.querySelector('.inner');
+        inner.style.transform = 'translateY(' + Math.round(Math.min(y, H) * 0.3) + 'px)';
+        inner.style.opacity = String(Math.max(0, 1 - y / (H * 0.7)).toFixed(3));
+      });
+    }, { passive: true });
   }
 
   $('sets').addEventListener('click', function (e) {
