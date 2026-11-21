@@ -231,7 +231,7 @@
     call({ action: 'cover', slug: slug }).then(function (c) {
       if (c.error || !$('app').classList.contains('hidden')) return;
       if (c.title) $('gateTitle').textContent = c.title;
-      if (c.cover) { $('gateCover').src = c.cover; $('gateCover').classList.remove('hidden'); }
+      if (c.cover) { $('gateCover').src = c.cover; $('gateCover').style.objectPosition = c.focus || 'center'; $('gateCover').classList.remove('hidden'); }
     }).catch(function () {});
   }
 
@@ -272,7 +272,7 @@
   // ---------- render ----------
   function render(keepScroll) {
     var y = window.scrollY;
-    if (data.cover) $('hero').style.backgroundImage = 'url("' + data.cover + '")';
+    if (data.cover) { $('hero').style.backgroundImage = 'url("' + data.cover + '")'; $('hero').style.backgroundPosition = data.coverFocus || 'center'; }
     $('gTitle').textContent = data.title;
     var count = data.sets.reduce(function (a, s) { return a + s.items.length; }, 0);
     $('gSub').textContent = (data.clientName ? 'For ' + data.clientName + ' · ' : '') + count + ' photos & films';
