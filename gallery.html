@@ -26,6 +26,7 @@
   #gate { min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
   #gate .box { width:100%; max-width:380px; border:1.5px solid var(--ink); background:#fff; padding:32px 26px; }
   #gate h1 { font-size:22px; margin:14px 0 6px; }
+  #gateCover { display:block; width:calc(100% + 52px); margin:-32px -26px 18px; aspect-ratio:3/2; object-fit:cover; background:#e6e4dd; }
   #gate p { color:var(--muted); font-size:14px; line-height:1.5; }
   #pin { width:100%; margin:20px 0 12px; padding:14px; font:700 28px ui-monospace,Consolas,monospace; letter-spacing:.4em; text-align:center; border:1.5px solid var(--ink); }
   #gateMsg { min-height:20px; font-size:13px; color:var(--accent); margin-bottom:10px; }
@@ -115,6 +116,7 @@
 <div id="gate">
   <a class="brand" href="/">Dream Big Media</a>
   <div class="box">
+    <img id="gateCover" class="hidden" alt="">
     <h1 id="gateTitle">Your gallery</h1>
     <p id="gateText">Enter the PIN from your email to view your photos and films.</p>
     <form id="pinForm">
@@ -123,7 +125,7 @@
       <button class="btn primary" style="width:100%" type="submit" id="pinBtn">View gallery</button>
     </form>
   </div>
-  <p style="margin-top:18px;font-size:12px;color:var(--muted)">Lost your PIN? <a href="/#contact">Contact Dream Big Media</a></p>
+  <p style="margin-top:18px;font-size:12px;color:var(--muted)">Lost your link? <a href="/client/">Log in with your email and PIN</a> · Lost your PIN? <a href="/#contact">Contact Dream Big Media</a></p>
 </div>
 
 <div id="app" class="hidden">
@@ -225,6 +227,12 @@
   } else {
     var saved = read(KEY);
     if (saved) resume(saved); else $('pin').focus();
+    // Show the gallery's name and cover photo above the PIN box (no other photos until the PIN is right).
+    call({ action: 'cover', slug: slug }).then(function (c) {
+      if (c.error || !$('app').classList.contains('hidden')) return;
+      if (c.title) $('gateTitle').textContent = c.title;
+      if (c.cover) { $('gateCover').src = c.cover; $('gateCover').classList.remove('hidden'); }
+    }).catch(function () {});
   }
 
   async function resume(token) {
