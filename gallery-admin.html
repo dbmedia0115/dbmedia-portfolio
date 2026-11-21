@@ -55,6 +55,18 @@
   .inbox-item { border-top:1px solid var(--line); padding:12px 0; } .inbox-item:first-child { border-top:0; padding-top:0; }
   .inbox-item table td { padding:3px 8px 3px 0; border:0; } .inbox-item .btn { padding:6px 10px; font-size:12px; } .inbox-item select { padding:6px 8px; font-size:12px; }
   .hidden { display:none !important; }
+  /* cover focus picker */
+  .cf { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:18px; align-items:start; }
+  .cf-pick { position:relative; cursor:crosshair; line-height:0; border:1px solid var(--line); background:#eee; touch-action:manipulation; }
+  .cf-pick img { width:100%; height:auto; display:block; user-select:none; -webkit-user-drag:none; }
+  .cf-dot { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border:3px solid #fff; border-radius:50%; box-shadow:0 0 0 2px var(--accent), 0 2px 8px rgba(0,0,0,.4); pointer-events:none; }
+  .cf-prev { display:flex; gap:14px; align-items:flex-end; }
+  .cf-box { background:#ddd center/cover no-repeat; border:1.5px solid var(--ink); }
+  .cf-box.phone { width:96px; aspect-ratio:9/16; border-radius:12px; }
+  .cf-box.desk { width:220px; aspect-ratio:16/9; }
+  @media (max-width:700px) { .cf { grid-template-columns:1fr; } .cf-box.desk { width:170px; } }
+  /* phones and tablets have no hover: always show the Cover / Delete buttons */
+  @media (hover:none) { .thumb .acts { display:flex; } .thumb .name { display:none; } .thumb .acts button { padding:7px 3px; font-size:11px; } }
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; font-size:13px; display:none; z-index:20; }
   @media (max-width:700px) { .grid2 { grid-template-columns:1fr; } main { padding:14px; } }
 </style>
@@ -139,6 +151,21 @@
         <label style="margin:0;display:flex;gap:6px;align-items:center;text-transform:none;font-weight:500"><input type="checkbox" id="dlToggle"> Allow downloads</label>
         <button class="btn" id="extendBtn">+30 days</button>
         <button class="btn danger" id="deleteGalleryBtn">Delete gallery &amp; files</button>
+      </div>
+    </div>
+
+    <div class="card hidden" id="coverCard">
+      <h2>Cover photo</h2>
+      <p class="muted small" style="margin-bottom:12px">Tap the photo where the focus should be (a face, for example). The previews show how the cover is cropped on a phone and on a computer. To use a different photo, press <strong>Cover</strong> on it below.</p>
+      <div class="cf">
+        <div class="cf-pick" id="cfPick"><img id="cfImg" alt="Cover photo"><span class="cf-dot" id="cfDot"></span></div>
+        <div>
+          <div class="cf-prev">
+            <div><div class="small muted" style="margin-bottom:4px">Phone</div><div class="cf-box phone" id="cfPhone"></div></div>
+            <div><div class="small muted" style="margin-bottom:4px">Computer</div><div class="cf-box desk" id="cfDesk"></div></div>
+          </div>
+          <div class="row" style="margin-top:14px"><button class="btn primary" id="cfSave" disabled>Save focus</button><button class="btn" id="cfCentre">Centre</button></div>
+        </div>
       </div>
     </div>
 
@@ -382,6 +409,7 @@
           '<div class="acts">' + (it.kind !== 'zip' ? '<button data-act="cover">Cover</button>' : '') + '<button data-act="del">Delete</button></div></div>';
       }).join('') + '</div>';
     }).join('');
+    renderCover(urls);
     Array.prototype.forEach.call(document.querySelectorAll('.thumb button'), function (b) {
       b.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -391,7 +419,37 @@
       });
     });
   }
-  async function setCover(it) { if (await patchGallery({ cover_item_id: it.id })) { toast('Cover set.'); loadItems(); } }
+  async function setCover(it) { if (await patchGallery({ cover_item_id: it.id, cover_focus: '50% 50%' })) { toast('Cover set. Tap the cover photo above to choose the focus.'); loadItems(); } }
+
+  // ---------- cover focus ----------
+  var cfFocus = '50% 50%';
+  function cfApply(f) {
+    cfFocus = f; var p = f.split(' ');
+    $('cfDot').style.left = p[0]; $('cfDot').style.top = p[1];
+    $('cfPhone').style.backgroundPosition = f; $('cfDesk').style.backgroundPosition = f;
+    $('cfSave').disabled = f === (current.cover_focus || '50% 50%');
+  }
+  async function renderCover(thumbUrls) {
+    var it = items.find(function (x) { return x.id === current.cover_item_id; }) || items.find(function (x) { return x.kind === 'photo'; });
+    if (!it || !(it.thumb_key || it.web_key || it.poster_key)) { show('coverCard', false); return; }
+    var key = it.thumb_key || it.poster_key || it.web_key;
+    var url = thumbUrls[key] || (await signedUrls('get', [key]))[key];
+    if (!url) { show('coverCard', false); return; }
+    $('cfImg').src = url; $('cfPhone').style.backgroundImage = $('cfDesk').style.backgroundImage = 'url("' + url + '")';
+    show('coverCard', true); cfApply(current.cover_focus || '50% 50%');
+  }
+  $('cfPick').addEventListener('click', function (e) {
+    var r = $('cfImg').getBoundingClientRect();
+    var x = Math.round(Math.min(100, Math.max(0, (e.clientX - r.left) / r.width * 100)));
+    var y = Math.round(Math.min(100, Math.max(0, (e.clientY - r.top) / r.height * 100)));
+    cfApply(x + '% ' + y + '%');
+  });
+  $('cfCentre').addEventListener('click', function () { cfApply('50% 50%'); });
+  $('cfSave').addEventListener('click', async function () {
+    var patch = { cover_focus: cfFocus };
+    if (!current.cover_item_id) { var first = items.find(function (x) { return x.kind === 'photo'; }); if (first) patch.cover_item_id = first.id; }
+    if (await patchGallery(patch)) { toast('Cover focus saved.'); cfApply(cfFocus); }
+  });
   async function deleteItem(it) {
     if (!confirm('Delete ' + it.file_name + '?')) return;
     var keys = [it.original_key, it.web_key, it.thumb_key, it.poster_key].filter(Boolean);
