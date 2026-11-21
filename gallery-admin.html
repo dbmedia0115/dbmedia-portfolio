@@ -7,7 +7,7 @@
 <title>Client Galleries — Admin | Dream Big Media</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600&family=Great+Vibes&display=swap');
   :root { --ink:#0a0a0a; --paper:#f5f5f0; --accent:#8c1d18; --line:#d8d6cf; --muted:#6b6a64; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink); font-size:14px; }
@@ -65,6 +65,16 @@
   .cf-box.phone { width:96px; aspect-ratio:9/16; border-radius:12px; }
   .cf-box.desk { width:220px; aspect-ratio:16/9; }
   @media (max-width:700px) { .cf { grid-template-columns:1fr; } .cf-box.desk { width:170px; } }
+  .cf-box { position:relative; overflow:hidden; }
+  .cf-box::after { content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.6), rgba(0,0,0,0) 60%); }
+  .cf-t { position:absolute; left:7px; right:7px; bottom:7px; z-index:1; color:#fff; line-height:1.05; font-family:'Archivo Black',sans-serif; text-transform:uppercase; overflow-wrap:anywhere; }
+  .cf-box[data-align="center"] .cf-t { text-align:center; }
+  .cf-box[data-font="elegant"] .cf-t { font-family:'Playfair Display',Georgia,serif; font-weight:600; text-transform:none; }
+  .cf-box[data-font="clean"] .cf-t { font-family:'Inter',sans-serif; font-weight:700; text-transform:none; }
+  .cf-box[data-font="script"] .cf-t { font-family:'Great Vibes',cursive; font-weight:400; text-transform:none; }
+  .cf-opts { display:grid; grid-template-columns:1fr; gap:2px; margin-top:14px; max-width:360px; }
+  .seg { display:flex; gap:0; } .seg button { flex:1; padding:8px 6px; border:1.5px solid var(--ink); margin-left:-1.5px; background:#fff; font:600 13px 'Inter',sans-serif; cursor:pointer; }
+  .seg button:first-child { margin-left:0; } .seg button.on { background:var(--ink); color:#fff; }
   /* phones and tablets have no hover: always show the Cover / Delete buttons */
   @media (hover:none) { .thumb .acts { display:flex; } .thumb .name { display:none; } .thumb .acts button { padding:7px 3px; font-size:11px; } }
   #toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 16px; font-size:13px; display:none; z-index:20; }
@@ -155,16 +165,26 @@
     </div>
 
     <div class="card hidden" id="coverCard">
-      <h2>Cover photo</h2>
-      <p class="muted small" style="margin-bottom:12px">Tap the photo where the focus should be (a face, for example). The previews show how the cover is cropped on a phone and on a computer. To use a different photo, press <strong>Cover</strong> on it below.</p>
+      <h2>Cover &amp; title</h2>
+      <p class="muted small" style="margin-bottom:12px">Tap the photo where the focus should be (a face, for example), then set the title. The previews show exactly how the client sees it on a phone and on a computer. To use a different photo, press <strong>Cover</strong> on it below.</p>
       <div class="cf">
         <div class="cf-pick" id="cfPick"><img id="cfImg" alt="Cover photo"><span class="cf-dot" id="cfDot"></span></div>
         <div>
           <div class="cf-prev">
-            <div><div class="small muted" style="margin-bottom:4px">Phone</div><div class="cf-box phone" id="cfPhone"></div></div>
-            <div><div class="small muted" style="margin-bottom:4px">Computer</div><div class="cf-box desk" id="cfDesk"></div></div>
+            <div><div class="small muted" style="margin-bottom:4px">Phone</div><div class="cf-box phone" id="cfPhone"><div class="cf-t"></div></div></div>
+            <div><div class="small muted" style="margin-bottom:4px">Computer</div><div class="cf-box desk" id="cfDesk"><div class="cf-t"></div></div></div>
           </div>
-          <div class="row" style="margin-top:14px"><button class="btn primary" id="cfSave" disabled>Save focus</button><button class="btn" id="cfCentre">Centre</button></div>
+          <div class="cf-opts">
+            <label for="cfTitle">Title</label>
+            <input type="text" id="cfTitle" maxlength="120">
+            <label>Style</label>
+            <div class="seg" id="cfFont"><button data-v="bold">Bold</button><button data-v="elegant" style="font-family:'Playfair Display',serif">Elegant</button><button data-v="clean">Clean</button><button data-v="script" style="font-family:'Great Vibes',cursive;font-size:17px">Script</button></div>
+            <label>Size</label>
+            <div class="seg" id="cfSize"><button data-v="s">S</button><button data-v="m">M</button><button data-v="l">L</button><button data-v="xl">XL</button></div>
+            <label>Position</label>
+            <div class="seg" id="cfAlign"><button data-v="left">Left</button><button data-v="center">Centre</button></div>
+          </div>
+          <div class="row" style="margin-top:14px"><button class="btn primary" id="cfSave" disabled>Save cover &amp; title</button><button class="btn" id="cfCentre">Centre the focus</button></div>
         </div>
       </div>
     </div>
@@ -423,12 +443,35 @@
 
   // ---------- cover focus ----------
   var cfFocus = '50% 50%';
+  var cfStyle = { font: 'bold', size: 'm', align: 'left' };
+  var CF_PX = { phone: { s: 9, m: 11, l: 14, xl: 18 }, desk: { s: 8, m: 10, l: 13, xl: 17 } };
+  function cfDirty() {
+    return cfFocus !== (current.cover_focus || '50% 50%') || $('cfTitle').value.trim() !== current.title ||
+      cfStyle.font !== (current.title_font || 'bold') || cfStyle.size !== (current.title_size || 'm') || cfStyle.align !== (current.title_align || 'left');
+  }
+  function cfPreview() {
+    var t = $('cfTitle').value.trim() || current.title;
+    [['cfPhone', 'phone'], ['cfDesk', 'desk']].forEach(function (b) {
+      var box = $(b[0]); box.dataset.font = cfStyle.font; box.dataset.align = cfStyle.align;
+      var px = CF_PX[b[1]][cfStyle.size] * (cfStyle.font === 'script' ? 1.35 : 1);
+      var el = box.querySelector('.cf-t'); el.textContent = t; el.style.fontSize = px + 'px';
+    });
+    ['cfFont', 'cfSize', 'cfAlign'].forEach(function (id) {
+      var key = id === 'cfFont' ? 'font' : id === 'cfSize' ? 'size' : 'align';
+      Array.prototype.forEach.call($(id).children, function (btn) { btn.classList.toggle('on', btn.dataset.v === cfStyle[key]); });
+    });
+    $('cfSave').disabled = !cfDirty();
+  }
   function cfApply(f) {
     cfFocus = f; var p = f.split(' ');
     $('cfDot').style.left = p[0]; $('cfDot').style.top = p[1];
     $('cfPhone').style.backgroundPosition = f; $('cfDesk').style.backgroundPosition = f;
-    $('cfSave').disabled = f === (current.cover_focus || '50% 50%');
+    cfPreview();
   }
+  [['cfFont', 'font'], ['cfSize', 'size'], ['cfAlign', 'align']].forEach(function (pair) {
+    $(pair[0]).addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; cfStyle[pair[1]] = b.dataset.v; cfPreview(); });
+  });
+  $('cfTitle').addEventListener('input', cfPreview);
   async function renderCover(thumbUrls) {
     var it = items.find(function (x) { return x.id === current.cover_item_id; }) || items.find(function (x) { return x.kind === 'photo'; });
     if (!it || !(it.thumb_key || it.web_key || it.poster_key)) { show('coverCard', false); return; }
@@ -436,7 +479,10 @@
     var url = thumbUrls[key] || (await signedUrls('get', [key]))[key];
     if (!url) { show('coverCard', false); return; }
     $('cfImg').src = url; $('cfPhone').style.backgroundImage = $('cfDesk').style.backgroundImage = 'url("' + url + '")';
-    show('coverCard', true); cfApply(current.cover_focus || '50% 50%');
+    show('coverCard', true);
+    $('cfTitle').value = current.title;
+    cfStyle = { font: current.title_font || 'bold', size: current.title_size || 'm', align: current.title_align || 'left' };
+    cfApply(current.cover_focus || '50% 50%');
   }
   $('cfPick').addEventListener('click', function (e) {
     var r = $('cfImg').getBoundingClientRect();
@@ -446,9 +492,11 @@
   });
   $('cfCentre').addEventListener('click', function () { cfApply('50% 50%'); });
   $('cfSave').addEventListener('click', async function () {
-    var patch = { cover_focus: cfFocus };
+    var title = $('cfTitle').value.trim();
+    if (!title) { toast('Give the gallery a title.'); $('cfTitle').focus(); return; }
+    var patch = { cover_focus: cfFocus, title: title, title_font: cfStyle.font, title_size: cfStyle.size, title_align: cfStyle.align };
     if (!current.cover_item_id) { var first = items.find(function (x) { return x.kind === 'photo'; }); if (first) patch.cover_item_id = first.id; }
-    if (await patchGallery(patch)) { toast('Cover focus saved.'); cfApply(cfFocus); }
+    if (await patchGallery(patch)) { toast('Cover and title saved.'); cfApply(cfFocus); }
   });
   async function deleteItem(it) {
     if (!confirm('Delete ' + it.file_name + '?')) return;
