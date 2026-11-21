@@ -381,7 +381,6 @@
       requestAnimationFrame(function () {
         heroTick = false;
         var h = $('hero'), H = h.offsetHeight || 1, y = window.scrollY;
-        if (y > H * 1.2) return;
         var inner = h.querySelector('.inner');
         inner.style.transform = 'translateY(' + Math.round(Math.min(y, H) * 0.3) + 'px)';
         inner.style.opacity = String(Math.max(0, 1 - y / (H * 0.7)).toFixed(3));
