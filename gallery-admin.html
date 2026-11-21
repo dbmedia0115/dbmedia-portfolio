@@ -620,6 +620,7 @@
           uploads = [[row.original_key, file, file.type], [row.web_key, pv.web, 'image/jpeg'], [row.thumb_key, pv.thumb, 'image/jpeg']];
         } else if (isVideo) {
           var vi = await videoInfo(file);
+          if (!vi.poster) logLine('Note: ' + name + ' could not be played in this browser, so some clients may not be able to watch it. Export it as MP4 (H.264) for playback on every phone and computer.');
           row.kind = 'video'; row.width = vi.width; row.height = vi.height;
           row.original_key = 'galleries/' + gid + '/video/' + name;
           uploads = [[row.original_key, file, file.type || 'video/mp4']];
