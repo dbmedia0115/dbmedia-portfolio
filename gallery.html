@@ -380,12 +380,67 @@
   $('emailCancel').addEventListener('click', function () { pendingFav = null; $('emailDlg').classList.add('hidden'); });
 
   // ---------- downloads ----------
+  // Live progress for every download: a bar plus "12.3 MB of 72 MB · 17%".
+  function progUi(title, msg) {
+    dlShow(title, '<p id="dlMsg">' + msg + '</p><div class="prog"><div id="dlBar"></div></div><p class="small" id="dlSub">Connecting…</p><div class="row"><button class="btn" data-close>Cancel</button></div>');
+  }
+  function progSet(got, total, label) {
+    if (!$('dlBar')) return;
+    var pct = total ? Math.min(100, got / total * 100) : 0;
+    $('dlBar').style.width = pct.toFixed(1) + '%';
+    $('dlSub').textContent = (fmtSize(got) || '0 KB') + (total ? ' of ' + fmtSize(total) + ' · ' + Math.floor(pct) + '%' : ' downloaded');
+    if (label) $('dlMsg').textContent = label;
+  }
+  // Reads a file chunk by chunk so the bar moves. With a sink it writes straight to disk.
+  async function pull(url, total, sink, onBytes) {
+    var res = await fetch(url); if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+    total = total || +res.headers.get('content-length') || 0;
+    var reader = res.body.getReader(), parts = [], got = 0;
+    for (;;) {
+      var r = await reader.read(); if (r.done) break;
+      if (dlCancel) { try { await reader.cancel(); } catch (e) {} throw new Error('cancelled'); }
+      if (sink) await sink.write(r.value); else parts.push(r.value);
+      got += r.value.byteLength; onBytes(got, total);
+    }
+    return sink ? null : new Blob(parts);
+  }
+  function nativeDownload(url, name) { var a = document.createElement('a'); a.href = url; a.rel = 'noopener'; if (name) a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+  function itemInfo(id) {
+    var it = allItems().find(function (x) { return x.id === id; }) || (data.zips || []).find(function (z) { return z.id === id; }) || {};
+    return { name: it.fileName || 'download', size: it.size || 0 };
+  }
+  var IN_MEMORY_MAX = 1024 * 1024 * 1024; // up to 1 GB is fetched with a progress bar, then saved
   async function download(itemId) {
-    toast('Preparing download…');
+    dlCancel = false;
+    var info = itemInfo(itemId);
+    progUi('Downloading', 'Getting ' + esc(info.name) + ' ready…');
     var d = await call({ action: 'download', token: data.token, itemId: itemId });
-    if (d.error === 'email_required') { data.registered = false; needEmail(function () { download(itemId); }); return; }
-    if (d.error) { toast(d.error === 'session_ended' ? 'Your session ended — refresh the page and enter your PIN.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return; }
-    var a = document.createElement('a'); a.href = d.url; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
+    if (d.error === 'email_required') { dlClose(); data.registered = false; needEmail(function () { download(itemId); }); return; }
+    if (d.error) { dlClose(); toast(d.error === 'session_ended' ? 'Your session ended — refresh the page and enter your PIN.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return; }
+    var label = 'Downloading ' + info.name;
+    try {
+      var maxMem = IS_PHONE ? 250 * 1024 * 1024 : IN_MEMORY_MAX; // phones have less memory
+      if (!info.size || info.size <= maxMem) {
+        var blob = await pull(d.url, info.size, null, function (g, tot) { progSet(g, tot, label); });
+        var u = URL.createObjectURL(blob); nativeDownload(u, info.name); setTimeout(function () { URL.revokeObjectURL(u); }, 120000);
+      } else if (typeof window.showSaveFilePicker === 'function') {
+        var handle;
+        try { handle = await window.showSaveFilePicker({ suggestedName: info.name }); }
+        catch (e) { if (e && e.name === 'AbortError') { dlClose(); return; } throw e; }
+        var w = await handle.createWritable();
+        try { await pull(d.url, info.size, w, function (g, tot) { progSet(g, tot, label); }); await w.close(); }
+        catch (e) { try { await w.abort(); } catch (x) {} throw e; }
+      } else {
+        nativeDownload(d.url);
+        dlShow('Download started', '<p><b>' + esc(info.name) + '</b> (' + fmtSize(info.size) + ') is downloading at full quality. Your browser shows its progress in the downloads list: the arrow at the top right, or the bar at the bottom of the window.</p><div class="row"><button class="btn primary" data-close>OK</button></div>');
+        return;
+      }
+      dlShow('Downloaded', '<p><b>' + esc(info.name) + '</b> (' + fmtSize(info.size) + ') is saved, full quality and untouched. You’ll find it in your Downloads folder' + (info.size > maxMem ? ' or wherever you chose' : '') + '.</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE);
+    } catch (e) {
+      if (dlCancel || (e && e.message === 'cancelled')) { toast('Download cancelled.'); return; }
+      dlShow('Download started', '<p>Your browser is downloading <b>' + esc(info.name) + '</b>. Watch its downloads list (arrow at the top right) for progress.</p><div class="row"><button class="btn primary" data-close>OK</button></div>');
+      nativeDownload(d.url);
+    }
   }
   $('lbDl').addEventListener('click', function () {
     var it = flat[lbIndex]; if (!it) return;
@@ -492,7 +547,8 @@
   var PHONE_BIG = 300 * 1024 * 1024, PHONE_BATCH_BYTES = 400 * 1024 * 1024;
   async function saveToPhone(items) {
     dlCancel = false;
-    var files = await links(items.map(function (it) { return it.id; })); if (!files) return;
+    progUi('Save to your phone', 'Getting your files ready…');
+    var files = await links(items.map(function (it) { return it.id; })); if (!files) { $('dlDlg').classList.add('hidden'); return; }
     var bigFiles = files.filter(function (f) { return (f.size || 0) > PHONE_BIG; });
     var small = files.filter(function (f) { return (f.size || 0) <= PHONE_BIG; });
     var batches = [], cur = [], curBytes = 0;
@@ -510,21 +566,23 @@
       dlShow(bigFiles.length === 1 ? 'Download your film' : 'Download your films', '<p>' + (bigFiles.length === 1 ? 'This film is' : 'These films are') + ' too big to save through the share sheet, so ' + (bigFiles.length === 1 ? 'it downloads' : 'they download') + ' as the full-quality original. Use Wi-Fi. On iPhone it goes to the Files app (Downloads); open it there and tap Share, then <b>Save Video</b> to put it in Photos.</p>' + rows +
         '<div class="row" style="margin-top:10px"><button class="btn primary" data-close>Done</button></div>');
       Array.prototype.forEach.call(document.querySelectorAll('[data-big]'), function (btn) {
-        btn.addEventListener('click', function () { plainDownload(bigFiles[+btn.dataset.big]); btn.textContent = 'Started'; btn.disabled = true; });
+        btn.addEventListener('click', function () {
+          plainDownload(bigFiles[+btn.dataset.big]); btn.textContent = 'Downloading…'; btn.disabled = true;
+          if (!$('bigHint')) btn.closest('.row').insertAdjacentHTML('afterend', '<p class="small" id="bigHint" style="color:var(--accent)">Downloading now. Your phone shows the progress: on iPhone tap the download arrow in Safari’s address bar; on Android pull down the notification bar. Keep this page open until it finishes.</p>');
+        });
       });
     }
     async function prepare() {
       var batch = batches[b], from = startAt + 1, to = startAt + batch.length;
-      dlShow('Save to your phone', '<p id="dlMsg">Getting full-resolution files ' + from + '–' + to + ' of ' + small.length + '…</p><div class="prog"><div id="dlBar"></div></div><div class="row"><button class="btn" data-close>Cancel</button></div>');
-      var got = [], loaded = 0, total = batch.reduce(function (a, f) { return a + (f.size || 0); }, 0) || 1;
+      progUi('Save to your phone', 'Getting full-resolution files ' + from + '–' + to + ' of ' + small.length + '…');
+      var got = [], base = 0, total = batch.reduce(function (a, f) { return a + (f.size || 0); }, 0);
       for (var k = 0; k < batch.length && !dlCancel; k++) {
-        var f = batch[k];
+        var f = batch[k], n = startAt + k + 1;
         try {
-          var res = await fetch(f.url); if (!res.ok) throw new Error();
-          var blob = await res.blob();
+          var blob = await pull(f.url, 0, null, function (g) { progSet(base + g, total, (small.length > 1 ? 'File ' + n + ' of ' + small.length + ': ' : 'Getting ') + f.fileName); });
           got.push(new File([blob], f.fileName, { type: mimeOf(f.fileName, f.kind) }));
-          loaded += f.size || blob.size; if ($('dlBar')) $('dlBar').style.width = Math.min(100, loaded / total * 100) + '%';
-        } catch (e) { /* skip that one */ }
+        } catch (e) { if (dlCancel) return; /* skip that one */ }
+        base += f.size || 0;
       }
       if (dlCancel) return;
       var last = b === batches.length - 1;
