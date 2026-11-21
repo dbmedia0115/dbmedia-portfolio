@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&family=Great+Vibes&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&family=Great+Vibes&family=Cormorant+Garamond:wght@600&family=Cinzel:wght@600&family=Montserrat:wght@300&family=Bebas+Neue&family=Special+Elite&family=Caveat:wght@700&family=Allura&display=swap');
   :root { --ink:#0a0a0a; --paper:#f5f5f0; --accent:#8c1d18; --line:#d8d6cf; --muted:#6b6a64; }
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body { background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; }
@@ -37,17 +37,23 @@
   .hero .inner { position:relative; z-index:1; padding:32px 24px; max-width:1200px; width:100%; margin:0 auto; }
   .hero h1 { font-size:clamp(26px,5vw,52px); line-height:1.05; }
   .hero p { margin-top:8px; opacity:.85; font-size:14px; }
-  /* Title styles chosen in the gallery admin */
-  .hero[data-font="elegant"] h1 { font-family:'Playfair Display',Georgia,serif; font-weight:600; text-transform:none; letter-spacing:0; }
-  .hero[data-font="clean"] h1 { font-family:'Inter',sans-serif; font-weight:700; text-transform:none; letter-spacing:-.01em; }
-  .hero[data-font="script"] h1 { font-family:'Great Vibes',cursive; font-weight:400; text-transform:none; letter-spacing:0; line-height:1.1; }
-  .hero[data-size="s"] h1 { font-size:clamp(22px,4vw,36px); }
-  .hero[data-size="l"] h1 { font-size:clamp(34px,7vw,76px); }
-  .hero[data-size="xl"] h1 { font-size:clamp(40px,10vw,104px); }
-  .hero[data-font="script"][data-size="m"] h1 { font-size:clamp(34px,6.5vw,66px); }
-  .hero[data-font="script"][data-size="s"] h1 { font-size:clamp(28px,5vw,46px); }
-  .hero[data-font="script"][data-size="l"] h1 { font-size:clamp(44px,9vw,96px); }
-  .hero[data-font="script"][data-size="xl"] h1 { font-size:clamp(52px,12vw,128px); }
+  /* Title styles chosen in the gallery admin. --k scales each font so they all read at a similar size. */
+  .hero h1 { font-size:calc(var(--k,1) * var(--fs, clamp(26px,5vw,52px))); overflow-wrap:break-word; }
+  .hero[data-size="s"] { --fs:clamp(22px,4vw,36px); }
+  .hero[data-size="l"] { --fs:clamp(34px,7vw,76px); }
+  .hero[data-size="xl"] { --fs:clamp(40px,10vw,104px); }
+  :where(.hero[data-font]:not([data-font="bold"])) h1 { text-transform:none; letter-spacing:0; }
+  .hero[data-font="elegant"] h1 { font-family:'Playfair Display',Georgia,serif; font-weight:600; }
+  .hero[data-font="italic"] h1 { font-family:'Playfair Display',Georgia,serif; font-weight:600; font-style:italic; }
+  .hero[data-font="classic"] h1 { font-family:'Cormorant Garamond',Georgia,serif; font-weight:600; --k:1.12; }
+  .hero[data-font="luxe"] h1 { font-family:'Cinzel',Georgia,serif; font-weight:600; text-transform:uppercase; letter-spacing:.06em; --k:.85; }
+  .hero[data-font="clean"] h1 { font-family:'Inter',sans-serif; font-weight:700; letter-spacing:-.01em; }
+  .hero[data-font="minimal"] h1 { font-family:'Montserrat',sans-serif; font-weight:300; text-transform:uppercase; letter-spacing:.18em; --k:.78; }
+  .hero[data-font="condensed"] h1 { font-family:'Bebas Neue',sans-serif; font-weight:400; text-transform:uppercase; letter-spacing:.03em; --k:1.22; }
+  .hero[data-font="typewriter"] h1 { font-family:'Special Elite',monospace; font-weight:400; --k:.9; }
+  .hero[data-font="hand"] h1 { font-family:'Caveat',cursive; font-weight:700; --k:1.25; }
+  .hero[data-font="script"] h1 { font-family:'Great Vibes',cursive; font-weight:400; line-height:1.1; --k:1.27; }
+  .hero[data-font="signature"] h1 { font-family:'Allura',cursive; font-weight:400; line-height:1.1; --k:1.35; }
   .hero[data-align="center"] .inner { text-align:center; }
   .bar { position:sticky; top:0; z-index:5; background:rgba(245,245,240,.96); backdrop-filter:blur(6px); border-bottom:1.5px solid var(--ink); }
   .bar .inner { max-width:1200px; margin:0 auto; padding:10px 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
