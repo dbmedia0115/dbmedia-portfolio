@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&family=Great+Vibes&display=swap');
   :root { --ink:#0a0a0a; --paper:#f5f5f0; --accent:#8c1d18; --line:#d8d6cf; --muted:#6b6a64; }
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body { background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; }
@@ -37,6 +37,18 @@
   .hero .inner { position:relative; z-index:1; padding:32px 24px; max-width:1200px; width:100%; margin:0 auto; }
   .hero h1 { font-size:clamp(26px,5vw,52px); line-height:1.05; }
   .hero p { margin-top:8px; opacity:.85; font-size:14px; }
+  /* Title styles chosen in the gallery admin */
+  .hero[data-font="elegant"] h1 { font-family:'Playfair Display',Georgia,serif; font-weight:600; text-transform:none; letter-spacing:0; }
+  .hero[data-font="clean"] h1 { font-family:'Inter',sans-serif; font-weight:700; text-transform:none; letter-spacing:-.01em; }
+  .hero[data-font="script"] h1 { font-family:'Great Vibes',cursive; font-weight:400; text-transform:none; letter-spacing:0; line-height:1.1; }
+  .hero[data-size="s"] h1 { font-size:clamp(22px,4vw,36px); }
+  .hero[data-size="l"] h1 { font-size:clamp(34px,7vw,76px); }
+  .hero[data-size="xl"] h1 { font-size:clamp(40px,10vw,104px); }
+  .hero[data-font="script"][data-size="m"] h1 { font-size:clamp(34px,6.5vw,66px); }
+  .hero[data-font="script"][data-size="s"] h1 { font-size:clamp(28px,5vw,46px); }
+  .hero[data-font="script"][data-size="l"] h1 { font-size:clamp(44px,9vw,96px); }
+  .hero[data-font="script"][data-size="xl"] h1 { font-size:clamp(52px,12vw,128px); }
+  .hero[data-align="center"] .inner { text-align:center; }
   .bar { position:sticky; top:0; z-index:5; background:rgba(245,245,240,.96); backdrop-filter:blur(6px); border-bottom:1.5px solid var(--ink); }
   .bar .inner { max-width:1200px; margin:0 auto; padding:10px 16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
   .tabs { display:flex; gap:6px; overflow-x:auto; flex:1; scrollbar-width:none; }
@@ -109,6 +121,14 @@
   #emailDlg input { width:100%; padding:11px; border:1.5px solid var(--ink); font:15px 'Inter',sans-serif; margin:14px 0; }
   #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:11px 16px; font-size:13px; z-index:50; display:none; max-width:90vw; text-align:center; }
   @media (max-width:600px) { .grid { columns:2 140px; column-gap:6px; } .tile { margin-bottom:6px; } .hero { height:56vh; } #lb .nav { display:none; } }
+  /* Phones: set tabs get their own scrolling row; the four buttons share one even row below */
+  @media (max-width:600px) {
+    .bar .inner { padding:8px 10px; gap:6px; }
+    .tabs { flex:1 1 100%; }
+    .bar .inner > .btn { flex:1 1 0; min-width:0; padding:10px 4px !important; font-size:12.5px; white-space:nowrap; }
+    .hero .inner { padding:22px 16px; }
+    .note { padding:0 12px; font-size:12px; }
+  }
 </style>
 </head>
 <body>
@@ -274,6 +294,8 @@
     var y = window.scrollY;
     if (data.cover) { $('hero').style.backgroundImage = 'url("' + data.cover + '")'; $('hero').style.backgroundPosition = data.coverFocus || 'center'; }
     $('gTitle').textContent = data.title;
+    var ts = data.titleStyle || {};
+    $('hero').dataset.font = ts.font || 'bold'; $('hero').dataset.size = ts.size || 'm'; $('hero').dataset.align = ts.align || 'left';
     var count = data.sets.reduce(function (a, s) { return a + s.items.length; }, 0);
     $('gSub').textContent = (data.clientName ? 'For ' + data.clientName + ' · ' : '') + count + ' photos & films';
     $('note').innerHTML = data.expiresAt ? 'Available until <strong>' + fmtDate(data.expiresAt) + '</strong>. Please download everything you want to keep before then — files are permanently deleted after this date.' : '';
