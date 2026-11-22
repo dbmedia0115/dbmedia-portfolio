@@ -442,7 +442,7 @@
   // ---------- downloads ----------
   // Live progress for every download: a bar plus "12.3 MB of 72 MB · 17%".
   function progUi(title, msg) {
-    dlShow(title, '<p id="dlMsg">' + msg + '</p><div class="prog"><div id="dlBar"></div></div><p class="small" id="dlSub">Connecting…</p><div class="row"><button class="btn" data-close>Cancel</button></div>');
+    dlShow(title, '<p id="dlMsg">' + msg + '</p><div class="prog"><div id="dlBar"></div></div><p class="small" id="dlSub">Connecting…</p><p class="small" style="margin-top:6px;color:var(--muted)">Keep this page open until it finishes.' + ('wakeLock' in navigator ? ' Your screen will stay on.' : '') + '</p><div class="row"><button class="btn" data-close>Cancel</button></div>');
   }
   function progSet(got, total, label) {
     if (!$('dlBar')) return;
@@ -453,16 +453,19 @@
   }
   // Reads a file chunk by chunk so the bar moves. With a sink it writes straight to disk.
   async function pull(url, total, sink, onBytes) {
-    var res = await fetch(url); if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
-    total = total || +res.headers.get('content-length') || 0;
-    var reader = res.body.getReader(), parts = [], got = 0;
-    for (;;) {
-      var r = await reader.read(); if (r.done) break;
-      if (dlCancel) { try { await reader.cancel(); } catch (e) {} throw new Error('cancelled'); }
-      if (sink) await sink.write(r.value); else parts.push(r.value);
-      got += r.value.byteLength; onBytes(got, total);
-    }
-    return sink ? null : new Blob(parts);
+    activeFetch++;
+    try {
+      var res = await fetch(url); if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+      total = total || +res.headers.get('content-length') || 0;
+      var reader = res.body.getReader(), parts = [], got = 0;
+      for (;;) {
+        var r = await reader.read(); if (r.done) break;
+        if (dlCancel) { try { await reader.cancel(); } catch (e) {} throw new Error('cancelled'); }
+        if (sink) await sink.write(r.value); else parts.push(r.value);
+        got += r.value.byteLength; onBytes(got, total);
+      }
+      return sink ? null : new Blob(parts);
+    } finally { activeFetch--; }
   }
   function nativeDownload(url, name) { var a = document.createElement('a'); a.href = url; a.rel = 'noopener'; if (name) a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
   function itemInfo(id) {
@@ -513,8 +516,21 @@
   var CAN_SHARE_FILES = (function () { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.jpg', { type: 'image/jpeg' })] })); } catch (e) { return false; } })();
   var CAN_PICK_FOLDER = typeof window.showDirectoryPicker === 'function';
   function fmtSize(b) { if (!b) return ''; var u = ['B', 'KB', 'MB', 'GB']; var i = 0; while (b >= 1024 && i < 3) { b /= 1024; i++; } return b.toFixed(i > 1 ? 1 : 0) + ' ' + u[i]; }
-  function dlShow(title, html) { $('dlTitle').textContent = title; $('dlBody').innerHTML = html; $('dlDlg').classList.remove('hidden'); }
-  function dlClose() { $('dlDlg').classList.add('hidden'); dlCancel = true; }
+  function dlShow(title, html) { $('dlTitle').textContent = title; $('dlBody').innerHTML = html; $('dlDlg').classList.remove('hidden'); keepAwake(html.indexOf('id="dlBar"') !== -1); }
+  function dlClose() { $('dlDlg').classList.add('hidden'); dlCancel = true; keepAwake(false); }
+
+  // While files download: keep the screen on (where the phone allows it) and
+  // warn before the page is closed, so a long download isn't cut off.
+  var wakeLock = null, wantAwake = false;
+  async function keepAwake(on) {
+    wantAwake = on;
+    if (on) {
+      if (!wakeLock && 'wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', function () { wakeLock = null; }); } catch (e) { wakeLock = null; } }
+    } else if (wakeLock) { try { await wakeLock.release(); } catch (e) {} wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && wantAwake && !wakeLock) keepAwake(true); });
+  var activeFetch = 0; // files being read by this page right now
+  window.addEventListener('beforeunload', function (e) { if (activeFetch > 0) { e.preventDefault(); e.returnValue = ''; } });
   var dlCancel = false;
   $('dlDlg').addEventListener('click', function (e) { if (e.target === $('dlDlg') || e.target.closest('[data-close]')) dlClose(); });
   function allItems() { var out = []; data.sets.forEach(function (s) { s.items.forEach(function (it) { out.push(it); }); }); return out; }
@@ -570,10 +586,13 @@
           try {
             var folder = useSub ? await dir.getDirectoryHandle(f.set.replace(/[\\\/:*?"<>|]/g, '-').slice(0, 80) || 'Gallery', { create: true }) : dir;
             var fh = await folder.getFileHandle(f.fileName.replace(/[\\\/:*?"<>|]/g, '-'), { create: true });
-            var res = await fetch(f.url); if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
-            var w = await fh.createWritable(); var reader = res.body.getReader();
-            for (;;) { var r = await reader.read(); if (r.done) break; await w.write(r.value); bytes += r.value.byteLength; upd(); if (dlCancel) { await reader.cancel(); break; } }
-            await w.close();
+            activeFetch++;
+            try {
+              var res = await fetch(f.url); if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+              var w = await fh.createWritable(); var reader = res.body.getReader();
+              for (;;) { var r = await reader.read(); if (r.done) break; await w.write(r.value); bytes += r.value.byteLength; upd(); if (dlCancel) { await reader.cancel(); break; } }
+              await w.close();
+            } finally { activeFetch--; }
           } catch (e) { failed.push(f.fileName); }
           done++; upd();
         }
@@ -627,7 +646,7 @@
         '<div class="row" style="margin-top:10px"><button class="btn primary" data-close>Done</button></div>');
       Array.prototype.forEach.call(document.querySelectorAll('[data-big]'), function (btn) {
         btn.addEventListener('click', function () {
-          plainDownload(bigFiles[+btn.dataset.big]); btn.textContent = 'Downloading…'; btn.disabled = true;
+          plainDownload(bigFiles[+btn.dataset.big]); btn.textContent = 'Downloading…'; btn.disabled = true; keepAwake(true);
           if (!$('bigHint')) btn.closest('.row').insertAdjacentHTML('afterend', '<p class="small" id="bigHint" style="color:var(--accent)">Downloading now. Your phone shows the progress: on iPhone tap the download arrow in Safari’s address bar; on Android pull down the notification bar. Keep this page open until it finishes.</p>');
         });
       });
