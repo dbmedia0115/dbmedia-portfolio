@@ -516,7 +516,7 @@
   var CAN_SHARE_FILES = (function () { try { return !!(navigator.canShare && navigator.canShare({ files: [new File(['x'], 'x.jpg', { type: 'image/jpeg' })] })); } catch (e) { return false; } })();
   var CAN_PICK_FOLDER = typeof window.showDirectoryPicker === 'function';
   function fmtSize(b) { if (!b) return ''; var u = ['B', 'KB', 'MB', 'GB']; var i = 0; while (b >= 1024 && i < 3) { b /= 1024; i++; } return b.toFixed(i > 1 ? 1 : 0) + ' ' + u[i]; }
-  function dlShow(title, html) { $('dlTitle').textContent = title; $('dlBody').innerHTML = html; $('dlDlg').classList.remove('hidden'); keepAwake(html.indexOf('id="dlBar"') !== -1); }
+  function dlShow(title, html) { $('dlTitle').textContent = title; $('dlBody').innerHTML = html; $('dlDlg').classList.remove('hidden'); keepAwake(html.indexOf('id="dlBar"') !== -1 || html.indexOf('id="dlShare"') !== -1); }
   function dlClose() { $('dlDlg').classList.add('hidden'); dlCancel = true; keepAwake(false); }
 
   // While files download: keep the screen on (where the phone allows it) and
@@ -669,7 +669,7 @@
       var savedBefore = startAt, pctAll = Math.round(startAt / small.length * 100);
       dlShow(many ? 'Group ' + (b + 1) + ' of ' + batches.length + ' ready' : 'Ready to save',
         '<p>' + (many ? 'Photos <b>' + from + '–' + to + '</b> of ' + small.length + ' are ready. ' : got.length + ' file' + (got.length === 1 ? ' is' : 's are') + ' ready. ') + 'Tap Save, then choose <b>Save Images</b> or <b>Save Video</b>.' + (last ? '' : ' The next group starts straight after.') + '</p>' +
-        (many ? '<div class="prog"><div style="width:' + pctAll + '%"></div></div><p class="small" style="color:var(--muted)">' + savedBefore + ' of ' + small.length + ' saved so far · ' + (batches.length - b - 1) + ' more group' + (batches.length - b - 1 === 1 ? '' : 's') + ' after this</p>' : '') +
+        (many ? '<div class="prog"><div style="width:' + pctAll + '%"></div></div><p class="small" style="color:var(--muted)">' + savedBefore + ' of ' + small.length + ' saved so far · ' + (last ? 'this is the last group' : (batches.length - b - 1) + ' more group' + (batches.length - b - 1 === 1 ? '' : 's') + ' after this') + '</p>' : '') +
         '<div class="row"><button class="btn primary" id="dlShare">Save ' + (got.length === 1 ? 'to phone' : 'these ' + got.length) + '</button><button class="btn" data-close>Cancel</button></div>' +
         '<p class="small" style="margin-top:10px"><a href="#" id="dlPlain">Download as files instead</a></p>');
       $('dlPlain').addEventListener('click', function (e) { e.preventDefault(); batch.forEach(function (f, n) { setTimeout(function () { plainDownload(f); }, n * 1200); }); next(); });
