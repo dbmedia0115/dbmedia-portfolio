@@ -555,7 +555,7 @@
       '<label class="opt"><input type="radio" name="dlWhat" value="all"' + (pickList.length ? '' : ' checked') + '><span>Everything<small>' + all.length + ' files · ' + fmtSize(total) + '</small></span></label>' +
       (favList.length ? '<label class="opt"><input type="radio" name="dlWhat" value="fav"><span>My favourites<small>' + favList.length + ' files · ' + fmtSize(favList.reduce(function (a, it) { return a + (it.size || 0); }, 0)) + '</small></span></label>' : '') +
       (data.zips && data.zips.length ? data.zips.map(function (z) { return '<label class="opt"><input type="radio" name="dlWhat" value="zip:' + z.id + '"><span>One ZIP file<small>' + esc(z.fileName) + (z.size ? ' · ' + fmtSize(z.size) : '') + '. Best on a computer.</small></span></label>'; }).join('') : '') +
-      '<p style="margin-top:10px">' + (IS_PHONE && CAN_SHARE_FILES ? 'On your phone, photos and films are saved to your camera roll, 10 at a time.' : CAN_PICK_FOLDER ? 'You’ll pick a folder on your computer and everything is saved straight into it.' : 'Your browser may ask to allow several downloads. Tap Allow.') + '</p>' +
+      '<p style="margin-top:10px">' + (IS_PHONE && CAN_SHARE_FILES ? 'On your phone, everything goes into your camera roll in groups of up to 10. You tap Save once per group.' : CAN_PICK_FOLDER ? 'You’ll pick a folder on your computer and everything is saved straight into it.' : 'Your browser may ask to allow several downloads. Tap Allow.') + '</p>' +
       (pickList.length ? '' : '<p class="small" style="margin-top:6px">Only want some? Tap <b>Select</b> at the top, pick your photos, then Download.</p>') +
       '<div class="row"><button class="btn primary" id="dlGo">Download</button><button class="btn" data-close>Cancel</button></div>';
     dlShow('Download your gallery', html);
@@ -653,20 +653,24 @@
     }
     async function prepare() {
       var batch = batches[b], from = startAt + 1, to = startAt + batch.length;
-      progUi('Save to your phone', 'Getting full-resolution files ' + from + '–' + to + ' of ' + small.length + '…');
+      var many = batches.length > 1;
+      progUi(many ? 'Saving group ' + (b + 1) + ' of ' + batches.length : 'Save to your phone', many ? 'Your phone saves photos in groups of up to 10. Getting photos ' + from + '–' + to + ' of ' + small.length + '…' : 'Getting your files…');
       var got = [], base = 0, total = batch.reduce(function (a, f) { return a + (f.size || 0); }, 0);
       for (var k = 0; k < batch.length && !dlCancel; k++) {
         var f = batch[k], n = startAt + k + 1;
         try {
-          var blob = await pull(f.url, 0, null, function (g) { progSet(base + g, total, (small.length > 1 ? 'File ' + n + ' of ' + small.length + ': ' : 'Getting ') + f.fileName); });
+          var blob = await pull(f.url, 0, null, function (g) { progSet(base + g, total, (small.length > 1 ? 'Photo ' + n + ' of ' + small.length + ': ' : 'Getting ') + f.fileName); if ($('dlSub') && many) $('dlSub').textContent += ' of this group'; });
           got.push(new File([blob], f.fileName, { type: mimeOf(f.fileName, f.kind) }));
         } catch (e) { if (dlCancel) return; /* skip that one */ }
         base += f.size || 0;
       }
       if (dlCancel) return;
       var last = b === batches.length - 1;
-      dlShow('Ready to save', '<p>' + got.length + ' file' + (got.length === 1 ? '' : 's') + ' ready (' + from + '–' + to + ' of ' + small.length + '). Tap Save, then choose <b>Save Images</b> or <b>Save Video</b>.</p>' +
-        '<div class="row"><button class="btn primary" id="dlShare">Save ' + got.length + ' to phone</button><button class="btn" data-close>Cancel</button></div>' +
+      var savedBefore = startAt, pctAll = Math.round(startAt / small.length * 100);
+      dlShow(many ? 'Group ' + (b + 1) + ' of ' + batches.length + ' ready' : 'Ready to save',
+        '<p>' + (many ? 'Photos <b>' + from + '–' + to + '</b> of ' + small.length + ' are ready. ' : got.length + ' file' + (got.length === 1 ? ' is' : 's are') + ' ready. ') + 'Tap Save, then choose <b>Save Images</b> or <b>Save Video</b>.' + (last ? '' : ' The next group starts straight after.') + '</p>' +
+        (many ? '<div class="prog"><div style="width:' + pctAll + '%"></div></div><p class="small" style="color:var(--muted)">' + savedBefore + ' of ' + small.length + ' saved so far · ' + (batches.length - b - 1) + ' more group' + (batches.length - b - 1 === 1 ? '' : 's') + ' after this</p>' : '') +
+        '<div class="row"><button class="btn primary" id="dlShare">Save ' + (got.length === 1 ? 'to phone' : 'these ' + got.length) + '</button><button class="btn" data-close>Cancel</button></div>' +
         '<p class="small" style="margin-top:10px"><a href="#" id="dlPlain">Download as files instead</a></p>');
       $('dlPlain').addEventListener('click', function (e) { e.preventDefault(); batch.forEach(function (f, n) { setTimeout(function () { plainDownload(f); }, n * 1200); }); next(); });
       $('dlShare').addEventListener('click', async function () {
