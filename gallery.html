@@ -551,7 +551,8 @@
     var all = allItems(), favList = all.filter(function (it) { return favs[it.id]; });
     var pickList = all.filter(function (it) { return picked[it.id]; });
     var total = all.reduce(function (a, it) { return a + (it.size || 0); }, 0);
-    var zips = data.zips || [], zipFirst = zips.length && !pickList.length;
+    var isAuto = function (z) { return / - Dream Big Media\.zip$/.test(z.fileName || ''); };
+    var zips = (data.zips || []).slice().sort(function (a, b) { return isAuto(b) - isAuto(a); }), zipFirst = zips.length && !pickList.length;
     var sizeOf = function (list) { return fmtSize(list.reduce(function (a, it) { return a + (it.size || 0); }, 0)); };
     var allHow = IS_PHONE && CAN_SHARE_FILES ? ['Straight to my camera roll', all.length + ' files · saved in groups of 10, one tap per group']
       : CAN_PICK_FOLDER ? ['Everything as separate files', all.length + ' files · ' + fmtSize(total) + ' · saved into a folder you choose']
