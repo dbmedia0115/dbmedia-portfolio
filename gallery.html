@@ -481,6 +481,7 @@
     if (d.error === 'email_required') { dlClose(); data.registered = false; needEmail(function () { download(itemId); }); return; }
     if (d.error) { dlClose(); toast(d.error === 'session_ended' ? 'Your session ended — refresh the page and enter your PIN.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return; }
     var label = 'Downloading ' + info.name;
+    var zipTip = /\.zip$/i.test(info.name) && IS_PHONE ? '<p class="small" style="margin-top:8px">To put them in Photos: open the <b>Files</b> app › <b>Downloads</b> and tap the ZIP to unzip it. Open the folder, tap <b>Select › Select All</b>, then <b>Share › Save Images</b>. On Android, open <b>Files › Downloads</b> and tap the ZIP to extract it.</p>' : '';
     try {
       var maxMem = IS_PHONE ? 250 * 1024 * 1024 : IN_MEMORY_MAX; // phones have less memory
       if (!info.size || info.size <= maxMem) {
@@ -495,10 +496,10 @@
         catch (e) { try { await w.abort(); } catch (x) {} throw e; }
       } else {
         nativeDownload(d.url);
-        dlShow('Download started', '<p><b>' + esc(info.name) + '</b> (' + fmtSize(info.size) + ') is downloading at full quality. Your browser shows its progress in the downloads list: the arrow at the top right, or the bar at the bottom of the window.</p><div class="row"><button class="btn primary" data-close>OK</button></div>');
+        dlShow('Download started', '<p><b>' + esc(info.name) + '</b> (' + fmtSize(info.size) + ') is downloading at full quality. ' + (IS_PHONE ? 'Your phone shows the progress: on iPhone tap the download arrow in Safari’s address bar; on Android pull down the notification bar.' : 'Your browser shows its progress in the downloads list: the arrow at the top right, or the bar at the bottom of the window.') + '</p>' + zipTip + '<div class="row"><button class="btn primary" data-close>OK</button></div>');
         return;
       }
-      dlShow('Downloaded', '<p><b>' + esc(info.name) + '</b> (' + fmtSize(info.size) + ') is saved, full quality and untouched. You’ll find it in your Downloads folder' + (info.size > maxMem ? ' or wherever you chose' : '') + '.</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE);
+      dlShow('Downloaded', '<p><b>' + esc(info.name) + '</b> (' + fmtSize(info.size) + ') is saved, full quality and untouched. You’ll find it in your Downloads folder' + (info.size > maxMem ? ' or wherever you chose' : '') + '.</p>' + zipTip + '<div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE);
     } catch (e) {
       if (dlCancel || (e && e.message === 'cancelled')) { toast('Download cancelled.'); return; }
       dlShow('Download started', '<p>Your browser is downloading <b>' + esc(info.name) + '</b>. Watch its downloads list (arrow at the top right) for progress.</p><div class="row"><button class="btn primary" data-close>OK</button></div>');
@@ -550,12 +551,16 @@
     var all = allItems(), favList = all.filter(function (it) { return favs[it.id]; });
     var pickList = all.filter(function (it) { return picked[it.id]; });
     var total = all.reduce(function (a, it) { return a + (it.size || 0); }, 0);
+    var zips = data.zips || [], zipFirst = zips.length && !pickList.length;
+    var sizeOf = function (list) { return fmtSize(list.reduce(function (a, it) { return a + (it.size || 0); }, 0)); };
+    var allHow = IS_PHONE && CAN_SHARE_FILES ? ['Straight to my camera roll', all.length + ' files · saved in groups of 10, one tap per group']
+      : CAN_PICK_FOLDER ? ['Everything as separate files', all.length + ' files · ' + fmtSize(total) + ' · saved into a folder you choose']
+      : ['Everything as separate files', all.length + ' files · ' + fmtSize(total) + ' · your browser may ask to allow several downloads'];
     var html = '<p>Full-resolution originals, exactly as delivered. Nothing is compressed.</p>' +
-      (pickList.length ? '<label class="opt"><input type="radio" name="dlWhat" value="sel" checked><span>Photos I selected<small>' + pickList.length + ' files · ' + fmtSize(pickList.reduce(function (a, it) { return a + (it.size || 0); }, 0)) + '</small></span></label>' : '') +
-      '<label class="opt"><input type="radio" name="dlWhat" value="all"' + (pickList.length ? '' : ' checked') + '><span>Everything<small>' + all.length + ' files · ' + fmtSize(total) + '</small></span></label>' +
-      (favList.length ? '<label class="opt"><input type="radio" name="dlWhat" value="fav"><span>My favourites<small>' + favList.length + ' files · ' + fmtSize(favList.reduce(function (a, it) { return a + (it.size || 0); }, 0)) + '</small></span></label>' : '') +
-      (data.zips && data.zips.length ? data.zips.map(function (z) { return '<label class="opt"><input type="radio" name="dlWhat" value="zip:' + z.id + '"><span>One ZIP file<small>' + esc(z.fileName) + (z.size ? ' · ' + fmtSize(z.size) : '') + '. Best on a computer.</small></span></label>'; }).join('') : '') +
-      '<p style="margin-top:10px">' + (IS_PHONE && CAN_SHARE_FILES ? 'On your phone, everything goes into your camera roll in groups of up to 10. You tap Save once per group.' : CAN_PICK_FOLDER ? 'You’ll pick a folder on your computer and everything is saved straight into it.' : 'Your browser may ask to allow several downloads. Tap Allow.') + '</p>' +
+      (pickList.length ? '<label class="opt"><input type="radio" name="dlWhat" value="sel" checked><span>Photos I selected<small>' + pickList.length + ' files · ' + sizeOf(pickList) + '</small></span></label>' : '') +
+      zips.map(function (z, i) { return '<label class="opt"><input type="radio" name="dlWhat" value="zip:' + z.id + '"' + (zipFirst && i === 0 ? ' checked' : '') + '><span>' + (i === 0 ? 'Everything in one download' : esc(z.fileName)) + '<small>' + (i === 0 ? all.length + ' files · ' : '') + (z.size ? fmtSize(z.size) + ' · ' : '') + 'one ZIP file, one tap' + (IS_PHONE ? ', saves to your Files app' : '') + '</small></span></label>'; }).join('') +
+      '<label class="opt"><input type="radio" name="dlWhat" value="all"' + (pickList.length || zipFirst ? '' : ' checked') + '><span>' + allHow[0] + '<small>' + allHow[1] + '</small></span></label>' +
+      (favList.length ? '<label class="opt"><input type="radio" name="dlWhat" value="fav"><span>My favourites<small>' + favList.length + ' files · ' + sizeOf(favList) + '</small></span></label>' : '') +
       (pickList.length ? '' : '<p class="small" style="margin-top:6px">Only want some? Tap <b>Select</b> at the top, pick your photos, then Download.</p>') +
       '<div class="row"><button class="btn primary" id="dlGo">Download</button><button class="btn" data-close>Cancel</button></div>';
     dlShow('Download your gallery', html);
