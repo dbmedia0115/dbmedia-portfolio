@@ -233,6 +233,8 @@
 
     <div class="card">
       <div class="row" style="justify-content:space-between"><h2 style="margin:0">Files</h2><span class="small muted" id="fileCount"></span></div>
+      <div class="row" style="margin:10px 0 4px;align-items:center;justify-content:space-between;gap:10px"><span class="small" id="zipState"></span><button class="btn hidden" id="zipBtn">Make ZIP now</button></div>
+      <div class="progress hidden" id="zipProg"><div id="zipBar"></div></div>
       <div id="itemsWrap" style="margin-top:10px"></div>
     </div>
 
@@ -376,7 +378,7 @@
     }
     if (!items.length) { toast('Upload some files first.'); return; }
     if (!current.pin_hash) toast('Tip: use “Copy invite + new PIN” next — the gallery has no PIN yet.');
-    if (await patchGallery({ status: 'live' })) toast('Live. Expires ' + fmtDate(current.expires_at) + '.');
+    if (await patchGallery({ status: 'live' })) { toast('Live. Expires ' + fmtDate(current.expires_at) + '.'); if (zipNeedsUpdate()) buildZip(); }
   });
   $('dlToggle').addEventListener('change', function () { patchGallery({ allow_downloads: this.checked }); });
   $('extendBtn').addEventListener('click', async function () {
@@ -432,6 +434,7 @@
     $('setList').innerHTML = Object.keys(sets).map(function (s) { return '<option value="' + esc(s) + '">'; }).join('');
     var total = items.reduce(function (a, it) { return a + (it.size_bytes || 0); }, 0);
     $('fileCount').textContent = items.length + ' files · ' + fmtSize(total);
+    renderZipState();
     if (!items.length) { $('itemsWrap').innerHTML = '<p class="muted">No files yet.</p>'; return; }
 
     var thumbKeys = items.map(function (it) { return it.thumb_key || it.poster_key; }).filter(Boolean);
@@ -528,6 +531,149 @@
       loadItems();
     } catch (err) { toast('Delete failed: ' + err.message); }
   }
+
+  // ---------- "Download all" ZIP ----------
+  // Built here in the admin from the untouched originals (stored, not
+  // compressed, so every photo and film inside is byte-for-byte the original)
+  // and uploaded in parts. Clients then get the whole gallery in one tap.
+  var ZIP_PART = 32 * 1024 * 1024, zipBusy = false;
+  var CRC_TABLE = (function () { var t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crcUpdate(c, buf) { for (var i = 0, n = buf.length; i < n; i++) c = CRC_TABLE[(c ^ buf[i]) & 255] ^ (c >>> 8); return c >>> 0; }
+  function zipSafe(s) { return String(s).replace(/[\\\/:*?"<>|\u0000-\u001f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120) || 'file'; }
+  function autoZip() { return items.find(function (it) { return it.kind === 'zip' && /\/zip\/auto\//.test(it.original_key); }); }
+  function zipEntries() {
+    var list = items.filter(function (it) { return it.kind !== 'zip'; });
+    var sets = {}; list.forEach(function (it) { sets[it.set_name] = true; });
+    var dirs = Object.keys(sets).length > 1, used = {}, enc = new TextEncoder();
+    return list.map(function (it) {
+      var name = (dirs ? zipSafe(it.set_name) + '/' : '') + zipSafe(it.file_name), base = name, n = 2;
+      while (used[name.toLowerCase()]) { name = base.replace(/(\.[^.\/]*)?$/, function (ext) { return ' (' + n + ')' + (ext || ''); }); n++; }
+      used[name.toLowerCase()] = true;
+      return { it: it, name: enc.encode(name), size: it.size_bytes || 0 };
+    });
+  }
+  function zipLayout(entries) {
+    var data = entries.reduce(function (a, e) { return a + e.size; }, 0);
+    var names = entries.reduce(function (a, e) { return a + e.name.length; }, 0);
+    var classic = data + names * 2 + entries.length * (30 + 16 + 46) + 22;
+    var z64 = classic > 0xFFFF0000 || entries.length > 65000 || entries.some(function (e) { return e.size >= 0xFFFFFFFF; });
+    var size = z64 ? data + names * 2 + entries.length * (50 + 24 + 74) + 56 + 20 + 22 : classic;
+    return { z64: z64, size: size };
+  }
+  function zipNeedsUpdate() {
+    var z = autoZip(), entries = zipEntries();
+    if (!entries.length) return false;
+    return !z || z.size_bytes !== zipLayout(entries).size;
+  }
+  function u64(dv, at, v) { dv.setUint32(at, v % 4294967296, true); dv.setUint32(at + 4, Math.floor(v / 4294967296), true); }
+  function renderZipState() {
+    if (!$('zipState')) return;
+    var z = autoZip(), entries = zipEntries();
+    if (zipBusy) return;
+    $('zipBtn').classList.toggle('hidden', !entries.length);
+    if (!entries.length) { $('zipState').textContent = ''; return; }
+    if (z && !zipNeedsUpdate()) { $('zipState').innerHTML = '<b>Download-all ZIP:</b> ready · ' + fmtSize(z.size_bytes) + ' · all ' + entries.length + ' files'; $('zipBtn').textContent = 'Rebuild ZIP'; }
+    else { $('zipState').innerHTML = '<b>Download-all ZIP:</b> <span style="color:var(--accent)">' + (z ? 'out of date (files changed)' : 'not made yet') + '</span>'; $('zipBtn').textContent = 'Make ZIP now'; }
+  }
+  async function partUploader(key, onSent) {
+    var id = (await sign({ action: 'mp_create', key: key, contentType: 'application/zip' })).uploadId;
+    var buf = new Uint8Array(ZIP_PART), fill = 0, part = 0, inflight = [], sent = 0;
+    function send(bytes, n) {
+      return (async function () {
+        for (var attempt = 1; ; attempt++) {
+          try {
+            var url = (await sign({ action: 'mp_parts', key: key, uploadId: id, parts: [n] })).urls[String(n)];
+            await putFile(url, bytes, null, null);
+            sent += bytes.length; onSent(sent); return;
+          } catch (e) { if (attempt >= 4) throw e; await new Promise(function (r) { setTimeout(r, attempt * 2000); }); }
+        }
+      })();
+    }
+    async function push() { part++; inflight.push(send(buf.subarray(0, fill), part)); buf = new Uint8Array(ZIP_PART); fill = 0; if (inflight.length >= 2) await inflight.shift(); }
+    return {
+      write: async function (chunk) {
+        while (chunk.length) {
+          var take = Math.min(ZIP_PART - fill, chunk.length);
+          buf.set(chunk.subarray(0, take), fill); fill += take; chunk = chunk.subarray(take);
+          if (fill === ZIP_PART) await push();
+        }
+      },
+      finish: async function () { if (fill) await push(); await Promise.all(inflight); return sign({ action: 'mp_complete', key: key, uploadId: id }); },
+      abort: function () { return sign({ action: 'mp_abort', key: key, uploadId: id }).catch(function () {}); }
+    };
+  }
+  async function buildZip() {
+    if (zipBusy) return;
+    var entries = zipEntries(); if (!entries.length) return;
+    var lay = zipLayout(entries), z64 = lay.z64, gid = current.id, old = autoZip();
+    var zipName = zipSafe(current.title) + ' - Dream Big Media.zip';
+    var key = 'galleries/' + gid + '/zip/auto/' + Date.now() + '/' + cleanPart(zipName);
+    zipBusy = true; $('zipBtn').disabled = true; show('zipProg', true); $('zipBar').style.width = '0%';
+    $('zipState').innerHTML = '<b>Making the Download-all ZIP…</b> keep this page open';
+    var up = null;
+    try {
+      up = await partUploader(key, function (s) { $('zipBar').style.width = Math.min(100, s / lay.size * 100).toFixed(1) + '%'; $('zipState').innerHTML = '<b>Making the Download-all ZIP…</b> ' + fmtSize(s) + ' of ' + fmtSize(lay.size) + ' · keep this page open'; });
+      var d = new Date(), dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+      var offset = 0;
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i]; e.offset = offset;
+        var h = new Uint8Array(30 + e.name.length + (z64 ? 20 : 0)), hv = new DataView(h.buffer);
+        hv.setUint32(0, 0x04034b50, true); hv.setUint16(4, z64 ? 45 : 20, true); hv.setUint16(6, 0x0808, true); hv.setUint16(8, 0, true);
+        hv.setUint16(10, dosTime, true); hv.setUint16(12, dosDate, true);
+        if (z64) { hv.setUint32(18, 0xFFFFFFFF, true); hv.setUint32(22, 0xFFFFFFFF, true); }
+        hv.setUint16(26, e.name.length, true); hv.setUint16(28, z64 ? 20 : 0, true); h.set(e.name, 30);
+        if (z64) { var x = 30 + e.name.length; hv.setUint16(x, 1, true); hv.setUint16(x + 2, 16, true); }
+        await up.write(h); offset += h.length;
+        var url = (await signedUrls('get', [e.it.original_key]))[e.it.original_key];
+        var res = await fetch(url); if (!res.ok || !res.body) throw new Error('could not read ' + e.it.file_name);
+        var reader = res.body.getReader(), crc = 0xFFFFFFFF, n = 0;
+        for (;;) { var r = await reader.read(); if (r.done) break; crc = crcUpdate(crc, r.value); n += r.value.length; await up.write(r.value); }
+        if (n !== e.size) throw new Error(e.it.file_name + ' is ' + n + ' bytes, expected ' + e.size);
+        e.crc = (crc ^ 0xFFFFFFFF) >>> 0; offset += n;
+        var dd = new Uint8Array(z64 ? 24 : 16), dv = new DataView(dd.buffer);
+        dv.setUint32(0, 0x08074b50, true); dv.setUint32(4, e.crc, true);
+        if (z64) { u64(dv, 8, e.size); u64(dv, 16, e.size); } else { dv.setUint32(8, e.size, true); dv.setUint32(12, e.size, true); }
+        await up.write(dd); offset += dd.length;
+      }
+      var cdStart = offset, cdLen = 0;
+      for (var j = 0; j < entries.length; j++) {
+        var c = entries[j], ex = z64 ? 28 : 0, ch = new Uint8Array(46 + c.name.length + ex), cv = new DataView(ch.buffer);
+        cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 45, true); cv.setUint16(6, z64 ? 45 : 20, true); cv.setUint16(8, 0x0808, true); cv.setUint16(10, 0, true);
+        cv.setUint16(12, dosTime, true); cv.setUint16(14, dosDate, true); cv.setUint32(16, c.crc, true);
+        cv.setUint32(20, z64 ? 0xFFFFFFFF : c.size, true); cv.setUint32(24, z64 ? 0xFFFFFFFF : c.size, true);
+        cv.setUint16(28, c.name.length, true); cv.setUint16(30, ex, true); cv.setUint32(42, z64 ? 0xFFFFFFFF : c.offset, true);
+        ch.set(c.name, 46);
+        if (z64) { var y = 46 + c.name.length; cv.setUint16(y, 1, true); cv.setUint16(y + 2, 24, true); u64(cv, y + 4, c.size); u64(cv, y + 12, c.size); u64(cv, y + 20, c.offset); }
+        await up.write(ch); cdLen += ch.length;
+      }
+      offset += cdLen;
+      if (z64) {
+        var e64 = new Uint8Array(76), ev = new DataView(e64.buffer);
+        ev.setUint32(0, 0x06064b50, true); u64(ev, 4, 44); ev.setUint16(12, 45, true); ev.setUint16(14, 45, true);
+        u64(ev, 24, entries.length); u64(ev, 32, entries.length); u64(ev, 40, cdLen); u64(ev, 48, cdStart);
+        ev.setUint32(56, 0x07064b50, true); u64(ev, 64, offset); ev.setUint32(72, 1, true);
+        await up.write(e64); offset += 76;
+      }
+      var eo = new Uint8Array(22), eov = new DataView(eo.buffer);
+      eov.setUint32(0, 0x06054b50, true);
+      eov.setUint16(8, z64 ? 0xFFFF : entries.length, true); eov.setUint16(10, z64 ? 0xFFFF : entries.length, true);
+      eov.setUint32(12, z64 ? 0xFFFFFFFF : cdLen, true); eov.setUint32(16, z64 ? 0xFFFFFFFF : cdStart, true);
+      await up.write(eo); offset += 22;
+      var fin = await up.finish();
+      if (offset !== lay.size || (fin.size && fin.size !== offset)) throw new Error('ZIP size check failed');
+      var ins = await sb.from('gallery_items').insert({ gallery_id: gid, set_name: 'Download all', kind: 'zip', file_name: zipName, original_key: key, size_bytes: offset, sort: 0 });
+      if (ins.error) throw new Error(ins.error.message);
+      if (old) { try { await sign({ action: 'delete', keys: [old.original_key] }); await sb.from('gallery_items').delete().eq('id', old.id); } catch (e2) {} }
+      toast('Download-all ZIP ready (' + fmtSize(offset) + ').');
+    } catch (err) {
+      if (up) await up.abort();
+      toast('ZIP failed: ' + err.message);
+    } finally {
+      zipBusy = false; $('zipBtn').disabled = false; show('zipProg', false);
+      if (current && current.id === gid) loadItems();
+    }
+  }
+  $('zipBtn').addEventListener('click', function () { buildZip(); });
 
   // ---------- upload ----------
   function logLine(msg) { var l = $('upLog'); l.classList.remove('hidden'); l.textContent += msg + '\n'; l.scrollTop = l.scrollHeight; }
@@ -659,7 +805,8 @@
     btn.disabled = false; $('fileInput').value = '';
     logLine('Finished: ' + done + ' uploaded' + (failed ? ', ' + failed + ' failed — choose them again to retry' : '') + '.');
     toast('Upload finished.');
-    loadItems();
+    await loadItems();
+    if (done && zipNeedsUpdate()) { logLine('Making the Download-all ZIP so clients can get everything in one tap…'); buildZip(); }
   });
 
   $('regBtn').addEventListener('click', async function () {
