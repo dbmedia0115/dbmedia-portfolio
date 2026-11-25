@@ -56,13 +56,15 @@
   #gate.has-cover #gateMsg { color:#ffd2cd; }
 
   /* ---------- Cover (8 styles) ---------- */
-  .hero { position:relative; height:100vh; height:100svh; min-height:520px; overflow:hidden; display:flex; align-items:center; justify-content:center; text-align:center; color:#fff; background:var(--bg); }
+  .hero { position:relative; min-height:100vh; min-height:100svh; padding:96px 0 84px; overflow:hidden; display:flex; align-items:center; justify-content:center; text-align:center; color:#fff; background:var(--bg); }
   .cv-img { position:absolute; inset:0; background:#151515 center/cover no-repeat; }
   .cv-img::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom, rgba(0,0,0,.28), rgba(0,0,0,.12) 40%, rgba(0,0,0,.38)); }
   .cv-frame { display:none; position:absolute; inset:18px; border:1px solid rgba(255,255,255,.8); z-index:1; pointer-events:none; }
   .hero .inner { position:relative; z-index:2; padding:28px; max-width:980px; width:100%; }
   .cv-brand { position:absolute; top:34px; left:50%; transform:translateX(-50%); z-index:3; color:inherit; white-space:nowrap; }
-  .hero h1 { font-family:var(--head); font-weight:400; text-transform:none; letter-spacing:.01em; line-height:1.08; overflow-wrap:break-word; font-size:calc(var(--k,1) * var(--fs, clamp(34px,5.6vw,68px))); }
+  .hero h1 { font-family:var(--head); font-weight:400; text-transform:none; letter-spacing:.01em; line-height:1.08; overflow-wrap:break-word; font-size:calc(var(--k,1) * var(--lk,1) * var(--fs, clamp(34px,5.6vw,68px))); }
+  /* Long titles step down in size so they always fit */
+  .hero[data-long="1"] { --lk:.8; } .hero[data-long="2"] { --lk:.64; } .hero[data-long="3"] { --lk:.5; }
   body[data-type="sans"] .hero[data-font="auto"] h1 { font-weight:300; text-transform:uppercase; letter-spacing:.16em; --k:.78; }
   .hero p { margin-top:16px; font-size:11.5px; font-weight:500; text-transform:uppercase; letter-spacing:.32em; opacity:.92; }
   .cv-go { display:inline-block; margin-top:34px; padding:13px 28px; border:1px solid currentColor; color:inherit; font:500 11px var(--ui); text-transform:uppercase; letter-spacing:.28em; text-decoration:none; cursor:pointer; background:transparent; transition:background .25s, color .25s; }
@@ -72,7 +74,7 @@
   /* Frame: thin inset border around the cover photo */
   .hero[data-cover="frame"] .cv-frame { display:block; }
   /* Left: title in the bottom-left corner */
-  .hero[data-cover="left"] { align-items:flex-end; justify-content:flex-start; text-align:left; }
+  .hero[data-cover="left"] { align-items:flex-end; justify-content:flex-start; text-align:left; padding-bottom:0; }
   .hero[data-cover="left"] .inner { padding:0 6vw 9vh; max-width:820px; }
   .hero[data-cover="left"] .cv-brand { left:6vw; transform:none; }
   .hero[data-cover="left"] .cv-img::after { background:linear-gradient(to top, rgba(0,0,0,.6), rgba(0,0,0,.05) 60%); }
@@ -84,10 +86,10 @@
   .hero[data-cover="border"] .cv-img { inset:22px; }
   .hero[data-cover="border"] .cv-brand { top:48px; }
   /* Split: photo on one half, title on the other */
-  .hero[data-cover="split"] { display:grid; grid-template-columns:1.15fr 1fr; align-items:stretch; color:var(--fg); text-align:center; }
+  .hero[data-cover="split"] { display:grid; grid-template-columns:1.15fr 1fr; align-items:stretch; color:var(--fg); text-align:center; padding:0; }
   .hero[data-cover="split"] .cv-img { position:relative; inset:auto; }
   .hero[data-cover="split"] .cv-img::after { display:none; }
-  .hero[data-cover="split"] .inner { align-self:center; justify-self:center; max-width:520px; }
+  .hero[data-cover="split"] .inner { align-self:center; justify-self:center; max-width:520px; padding:96px 32px 84px; }
   .hero[data-cover="split"] .cv-brand { left:auto; right:0; width:46.5%; transform:none; text-align:center; }
   .hero[data-cover="split"] .cv-go:hover, .hero[data-cover="album"] .cv-go:hover, .hero[data-cover="none"] .cv-go:hover { background:var(--fg); color:var(--bg); }
   /* Album: a smaller print-style photo with the title underneath */
@@ -97,7 +99,7 @@
   .hero[data-cover="album"] .inner { padding:28px 20px 0; flex:0 0 auto; }
   .hero[data-cover="album"] .cv-scroll { display:none; }
   /* None: text only */
-  .hero[data-cover="none"] { color:var(--fg); height:auto; min-height:62svh; }
+  .hero[data-cover="none"] { color:var(--fg); min-height:62vh; min-height:62svh; }
   .hero[data-cover="none"] .cv-img { display:none; }
   /* Title fonts chosen in the admin ("auto" follows the gallery typography) */
   .hero[data-size="s"] { --fs:clamp(26px,4vw,42px); }
@@ -258,7 +260,7 @@
     #sets { padding-top:14px; --edge:4px; }
     body[data-space="large"] #sets { --edge:12px; }
     .grid { columns:2; } body[data-thumb="large"] .grid { columns:1; }
-    .hero { min-height:480px; }
+    .hero { padding:84px 0 72px; }
     .cv-frame { inset:12px; }
     .cv-brand { top:28px; }
     .hero[data-cover="border"] .cv-img { inset:12px; }
@@ -268,10 +270,11 @@
     .hero[data-cover="label"] .inner { padding:30px 24px; }
     .hero[data-cover="split"] { grid-template-columns:1fr; grid-template-rows:64svh auto; height:auto; }
     .hero[data-cover="split"] .inner { padding:34px 24px 46px; }
+    .hero[data-cover="split"] { padding:0; }
     .hero[data-cover="split"] .cv-brand { width:100%; color:#fff; }
     .hero[data-cover="split"] .cv-scroll { display:none; }
     .hero[data-cover="album"] { padding:76px 16px 34px; }
-    .hero[data-cover="album"] .cv-img { width:100%; max-height:none; aspect-ratio:4/5; flex:0 0 auto; }
+    .hero[data-cover="album"] .cv-img { width:auto; height:52svh; max-width:100%; max-height:none; aspect-ratio:4/5; flex:0 0 auto; }
     .hero p { letter-spacing:.26em; font-size:10.5px; }
     .bar-title { font-size:17px; }
     #lb .stage { padding:0 0 16px; }
@@ -472,6 +475,8 @@
     $('cvImg').style.backgroundPosition = data.coverFocus || 'center';
     if (!data.cover && design.cover !== 'none') $('hero').dataset.cover = 'none';
     $('gTitle').textContent = data.title; $('barTitle').textContent = data.title;
+    var tl = (data.title || '').length;
+    $('hero').dataset.long = tl > 70 ? '3' : tl > 46 ? '2' : tl > 28 ? '1' : '';
     var ts = data.titleStyle || {};
     $('hero').dataset.font = ts.font || 'auto'; $('hero').dataset.size = ts.size || 'm'; $('hero').dataset.align = ts.align || 'center';
     var count = data.sets.reduce(function (a, s) { return a + s.items.length; }, 0);
