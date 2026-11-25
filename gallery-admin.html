@@ -7,7 +7,7 @@
 <title>Client Galleries — Admin | Dream Big Media</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,600&family=Great+Vibes&family=Cormorant+Garamond:wght@600&family=Cinzel:wght@600&family=Montserrat:wght@300&family=Bebas+Neue&family=Special+Elite&family=Caveat:wght@700&family=Allura&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&family=Jost:wght@400;500&family=Cormorant+Garamond:wght@400;500&family=Playfair+Display:ital,wght@0,600;1,600&family=Great+Vibes&family=Cormorant+Garamond:wght@600&family=Cinzel:wght@600&family=Montserrat:wght@300&family=Bebas+Neue&family=Special+Elite&family=Caveat:wght@700&family=Allura&display=swap');
   :root { --ink:#0a0a0a; --paper:#f5f5f0; --accent:#8c1d18; --line:#d8d6cf; --muted:#6b6a64; }
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:'Inter',sans-serif; background:var(--paper); color:var(--ink); font-size:14px; }
@@ -55,6 +55,22 @@
   .inbox-item { border-top:1px solid var(--line); padding:12px 0; } .inbox-item:first-child { border-top:0; padding-top:0; }
   .inbox-item table td { padding:3px 8px 3px 0; border:0; } .inbox-item .btn { padding:6px 10px; font-size:12px; } .inbox-item select { padding:6px 8px; font-size:12px; }
   .hidden { display:none !important; }
+  /* Gallery design panel (Pixieset-style options) */
+  .dz label.h { margin-top:16px; }
+  .cvs { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:10px; }
+  .cvs button { border:1.5px solid var(--line); background:#fff; padding:6px 6px 8px; cursor:pointer; font:600 11px 'Inter',sans-serif; text-transform:uppercase; letter-spacing:.06em; color:var(--ink); }
+  .cvs button.on { border-color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink); }
+  .mini { position:relative; height:58px; margin-bottom:6px; background:#f3f1ec; overflow:hidden; }
+  .mini i { position:absolute; display:block; }
+  .mini .p { background:linear-gradient(135deg,#a9988a,#6f6359); }
+  .mini .t { height:4px; width:34%; background:#fff; left:33%; top:46%; }
+  .mini .t2 { height:2px; width:20%; background:#fff; left:40%; top:58%; }
+  .swatches { display:flex; flex-wrap:wrap; gap:10px; }
+  .swatches button { width:46px; text-align:center; border:0; background:none; cursor:pointer; font:500 10px 'Inter',sans-serif; color:var(--muted); padding:0; }
+  .swatches button span { display:block; width:34px; height:34px; margin:0 auto 4px; border-radius:50%; border:1px solid #cfcbc2; box-shadow:inset 0 -12px 0 var(--sw2, rgba(0,0,0,.08)); }
+  .swatches button.on span { outline:2px solid var(--ink); outline-offset:2px; }
+  .swatches button.on { color:var(--ink); }
+  .dz-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:4px 18px; }
   /* cover focus picker */
   .cf { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:18px; align-items:start; }
   .cf-pick { position:relative; cursor:crosshair; line-height:0; border:1px solid var(--line); background:#eee; touch-action:manipulation; }
@@ -69,6 +85,7 @@
   .cf-box::after { content:''; position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.6), rgba(0,0,0,0) 60%); }
   .cf-t { position:absolute; left:7px; right:7px; bottom:7px; z-index:1; color:#fff; line-height:1.05; font-family:'Archivo Black',sans-serif; text-transform:uppercase; overflow-wrap:anywhere; }
   .cf-box[data-align="center"] .cf-t { text-align:center; }
+  .cf-box[data-font="auto"] .cf-t, .fontgrid button[data-v="auto"] { font-family:'Cormorant Garamond',Georgia,serif; font-weight:500; text-transform:none; }
   .cf-box[data-font="bold"] .cf-t, .fontgrid button[data-v="bold"] { font-family:'Archivo Black',sans-serif; font-weight:400; text-transform:uppercase; }
   .cf-box[data-font="elegant"] .cf-t, .fontgrid button[data-v="elegant"] { font-family:'Playfair Display',Georgia,serif; font-weight:600; text-transform:none; }
   .cf-box[data-font="italic"] .cf-t, .fontgrid button[data-v="italic"] { font-family:'Playfair Display',Georgia,serif; font-weight:600; font-style:italic; text-transform:none; }
@@ -192,7 +209,7 @@
             <label for="cfTitle">Title</label>
             <input type="text" id="cfTitle" maxlength="120">
             <label>Style</label>
-            <div class="fontgrid" id="cfFont"><button data-v="bold">Bold</button><button data-v="elegant">Elegant</button><button data-v="italic">Italic</button><button data-v="classic">Classic</button><button data-v="luxe">Luxe</button><button data-v="clean">Clean</button><button data-v="minimal">Minimal</button><button data-v="condensed">Bold Tall</button><button data-v="typewriter">Typewriter</button><button data-v="hand">Handwritten</button><button data-v="script">Script</button><button data-v="signature">Signature</button></div>
+            <div class="fontgrid" id="cfFont"><button data-v="auto">Match style</button><button data-v="bold">Bold</button><button data-v="elegant">Elegant</button><button data-v="italic">Italic</button><button data-v="classic">Classic</button><button data-v="luxe">Luxe</button><button data-v="clean">Clean</button><button data-v="minimal">Minimal</button><button data-v="condensed">Bold Tall</button><button data-v="typewriter">Typewriter</button><button data-v="hand">Handwritten</button><button data-v="script">Script</button><button data-v="signature">Signature</button></div>
             <label>Size</label>
             <div class="seg" id="cfSize"><button data-v="s">S</button><button data-v="m">M</button><button data-v="l">L</button><button data-v="xl">XL</button></div>
             <label>Position</label>
@@ -200,6 +217,29 @@
           </div>
           <div class="row" style="margin-top:14px"><button class="btn primary" id="cfSave" disabled>Save cover &amp; title</button><button class="btn" id="cfCentre">Centre the focus</button></div>
         </div>
+      </div>
+    </div>
+
+    <div class="card dz" id="designCard">
+      <h2>Gallery design</h2>
+      <p class="muted small" style="margin-bottom:6px">How the client sees the gallery: cover layout, colours, fonts, photo grid and menu. Save, then press <b>View as client</b> to see it.</p>
+      <label class="h">Cover style</label>
+      <div class="cvs" id="dzCover"></div>
+      <label class="h">Colour</label>
+      <div class="swatches" id="dzTheme"></div>
+      <div class="dz-grid">
+        <div><label class="h">Typography</label><div class="seg" id="dzType"><button data-v="serif" style="font-family:'Cormorant Garamond',Georgia,serif;font-size:15px">Serif</button><button data-v="sans">Sans</button></div></div>
+        <div><label class="h">Grid style</label><div class="seg" id="dzGrid"><button data-v="vertical">Vertical</button><button data-v="horizontal">Horizontal</button></div></div>
+        <div><label class="h">Thumbnail size</label><div class="seg" id="dzThumb"><button data-v="regular">Regular</button><button data-v="large">Large</button></div></div>
+        <div><label class="h">Grid spacing</label><div class="seg" id="dzSpace"><button data-v="regular">Regular</button><button data-v="large">Large</button></div></div>
+        <div><label class="h">Menu</label><div class="seg" id="dzNav"><button data-v="text">Icons &amp; text</button><button data-v="icons">Icons only</button></div></div>
+        <div><label class="h" for="dzDate">Event date (shown on the cover)</label><input type="date" id="dzDate"></div>
+      </div>
+      <label class="chk" style="display:flex;gap:8px;align-items:center;margin-top:14px;text-transform:none;font-weight:500;font-size:13px;letter-spacing:0"><input type="checkbox" id="dzShow" style="width:auto"> Slideshow button for clients</label>
+      <div class="row" style="margin-top:16px">
+        <button class="btn primary" id="dzSave" disabled>Save design</button>
+        <a class="btn" id="dzView" target="_blank" rel="noopener">View as client ↗</a>
+        <label class="chk" style="display:flex;gap:8px;align-items:center;margin:0;text-transform:none;font-weight:500;font-size:13px;letter-spacing:0"><input type="checkbox" id="dzDefault" style="width:auto"> Use for new galleries</label>
       </div>
     </div>
 
@@ -330,11 +370,63 @@
     e.preventDefault();
     var r = await sb.from('galleries').insert({
       title: $('nTitle').value.trim(), client_name: $('nClient').value.trim() || null,
-      client_email: $('nEmail').value.trim() || null, notes: $('nNotes').value.trim() || null
+      client_email: $('nEmail').value.trim() || null, notes: $('nNotes').value.trim() || null,
+      design: (function () { try { return JSON.parse(localStorage.getItem('dbm_design_default') || '{}'); } catch (e) { return {}; } })()
     }).select().single();
     if (r.error) { toast(r.error.message); return; }
     $('newForm').reset(); show('newCard', false);
     openGallery(r.data.id);
+  });
+
+  // ---------- gallery design (Pixieset-style) ----------
+  var DZ_DEFAULTS = { cover: 'center', type: 'serif', theme: 'white', grid: 'vertical', thumb: 'regular', space: 'regular', nav: 'text', date: '', slideshow: true };
+  var DZ_COVERS = [
+    ['center', 'Center', '<i class="p" style="inset:0"></i><i class="t"></i><i class="t2"></i>'],
+    ['frame', 'Frame', '<i class="p" style="inset:0"></i><i style="inset:5px;border:1px solid #fff"></i><i class="t"></i><i class="t2"></i>'],
+    ['left', 'Left', '<i class="p" style="inset:0"></i><i class="t" style="left:10%;top:66%"></i><i class="t2" style="left:10%;top:78%"></i>'],
+    ['split', 'Split', '<i class="p" style="left:0;top:0;bottom:0;width:52%"></i><i class="t" style="background:#555;left:60%;width:30%"></i><i class="t2" style="background:#999;left:66%;width:18%"></i>'],
+    ['label', 'Label', '<i class="p" style="inset:0"></i><i style="left:26%;right:26%;top:30%;bottom:30%;background:#f3f1ec"></i><i class="t" style="background:#555;left:34%;width:32%"></i><i class="t2" style="background:#999"></i>'],
+    ['border', 'Border', '<i class="p" style="inset:7px"></i><i class="t"></i><i class="t2"></i>'],
+    ['album', 'Album', '<i class="p" style="left:22%;right:22%;top:8%;bottom:34%"></i><i class="t" style="background:#555;top:74%"></i><i class="t2" style="background:#999;top:86%"></i>'],
+    ['none', 'No photo', '<i class="t" style="background:#555"></i><i class="t2" style="background:#999"></i>']
+  ];
+  var DZ_THEMES = [['white', 'White', '#ffffff', '#1d1d1b'], ['ivory', 'Ivory', '#fbf8f3', '#2b2622'], ['sand', 'Sand', '#f2ebe1', '#3a3129'], ['stone', 'Stone', '#eeeeea', '#2e2e2b'], ['sage', 'Sage', '#eef0ea', '#2f362e'], ['blush', 'Blush', '#f8efec', '#3b2b28'], ['mist', 'Mist', '#edf1f4', '#263039'], ['charcoal', 'Charcoal', '#222221', '#f2f0ec'], ['black', 'Black', '#0b0b0b', '#f5f5f3']];
+  var dz = Object.assign({}, DZ_DEFAULTS);
+  $('dzCover').innerHTML = DZ_COVERS.map(function (c) { return '<button type="button" data-v="' + c[0] + '"><div class="mini">' + c[2] + '</div>' + c[1] + '</button>'; }).join('');
+  $('dzTheme').innerHTML = DZ_THEMES.map(function (c) { return '<button type="button" data-v="' + c[0] + '" title="' + c[1] + '"><span style="background:' + c[2] + ';--sw2:' + c[3] + '"></span>' + c[1] + '</button>'; }).join('');
+  function dzSaved() { return Object.assign({}, DZ_DEFAULTS, (current && current.design) || {}); }
+  function dzRender() {
+    [['dzCover', 'cover'], ['dzTheme', 'theme'], ['dzType', 'type'], ['dzGrid', 'grid'], ['dzThumb', 'thumb'], ['dzSpace', 'space'], ['dzNav', 'nav']].forEach(function (p) {
+      Array.prototype.forEach.call($(p[0]).querySelectorAll('button'), function (b) { b.classList.toggle('on', b.dataset.v === dz[p[1]]); });
+    });
+    $('dzDate').value = dz.date || '';
+    $('dzShow').checked = dz.slideshow !== false;
+    $('dzSave').disabled = JSON.stringify(dz) === JSON.stringify(dzSaved());
+  }
+  [['dzCover', 'cover'], ['dzTheme', 'theme'], ['dzType', 'type'], ['dzGrid', 'grid'], ['dzThumb', 'thumb'], ['dzSpace', 'space'], ['dzNav', 'nav']].forEach(function (p) {
+    $(p[0]).addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; dz[p[1]] = b.dataset.v; dzRender(); });
+  });
+  $('dzDate').addEventListener('change', function () { dz.date = this.value; dzRender(); });
+  $('dzShow').addEventListener('change', function () { dz.slideshow = this.checked; dzRender(); });
+  function dzOpen() {
+    dz = dzSaved();
+    $('dzView').href = SITE + '/gallery.html?g=' + current.slug;
+    try { $('dzDefault').checked = !!localStorage.getItem('dbm_design_default'); } catch (e) {}
+    dzRender();
+  }
+  $('dzSave').addEventListener('click', async function () {
+    var keep = {}; Object.keys(DZ_DEFAULTS).forEach(function (k) { keep[k] = dz[k]; });
+    if (await patchGallery({ design: keep })) {
+      toast('Design saved. Open “View as client” to see it.');
+      try { if ($('dzDefault').checked) localStorage.setItem('dbm_design_default', JSON.stringify(Object.assign({}, keep, { date: '' }))); } catch (e) {}
+      dzRender();
+    }
+  });
+  $('dzDefault').addEventListener('change', function () {
+    try {
+      if (this.checked) { var d = Object.assign({}, dz, { date: '' }); localStorage.setItem('dbm_design_default', JSON.stringify(d)); toast('New galleries will start with this design.'); }
+      else { localStorage.removeItem('dbm_design_default'); toast('New galleries will use the standard design.'); }
+    } catch (e) {}
   });
 
   // ---------- detail ----------
@@ -343,7 +435,7 @@
     if (r.error) { toast(r.error.message); return; }
     current = r.data;
     show('listView', false); show('detailView', true); show('inviteBox', false);
-    renderHeader();
+    renderHeader(); dzOpen();
     await loadItems();
     loadFavs(); loadActivity();
     window.scrollTo(0, 0);
@@ -469,7 +561,7 @@
   var CF_PX = { phone: { s: 9, m: 11, l: 14, xl: 18 }, desk: { s: 8, m: 10, l: 13, xl: 17 } };
   function cfDirty() {
     return cfFocus !== (current.cover_focus || '50% 50%') || $('cfTitle').value.trim() !== current.title ||
-      cfStyle.font !== (current.title_font || 'bold') || cfStyle.size !== (current.title_size || 'm') || cfStyle.align !== (current.title_align || 'left');
+      cfStyle.font !== (current.title_font || 'auto') || cfStyle.size !== (current.title_size || 'm') || cfStyle.align !== (current.title_align || 'center');
   }
   function cfPreview() {
     var t = $('cfTitle').value.trim() || current.title;
@@ -503,7 +595,7 @@
     $('cfImg').src = url; $('cfPhone').style.backgroundImage = $('cfDesk').style.backgroundImage = 'url("' + url + '")';
     show('coverCard', true);
     $('cfTitle').value = current.title;
-    cfStyle = { font: current.title_font || 'bold', size: current.title_size || 'm', align: current.title_align || 'left' };
+    cfStyle = { font: current.title_font || 'auto', size: current.title_size || 'm', align: current.title_align || 'center' };
     cfApply(current.cover_focus || '50% 50%');
   }
   $('cfPick').addEventListener('click', function (e) {
