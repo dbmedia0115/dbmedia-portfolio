@@ -784,82 +784,209 @@
   }
 
   $('dlAll').addEventListener('click', function () { needEmail(openDownloadChoice); });
+
+  // ---------- one-tap ZIP downloads (like Pixieset) ----------
+  // Every multi-file download is a single ZIP of the untouched originals
+  // (stored, not compressed). "Everything" uses the ZIP made in the admin when
+  // it is up to date; selections and favourites are zipped right here.
+  var CRC_TABLE = (function () { var t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crcUpdate(c, buf) { for (var i = 0, n = buf.length; i < n; i++) c = CRC_TABLE[(c ^ buf[i]) & 255] ^ (c >>> 8); return c >>> 0; }
+  function zipSafe(s) { return String(s).replace(/[\\\/:*?"<>|\u0000-\u001f]/g, '-').replace(/\s+/g, ' ').trim().slice(0, 120) || 'file'; }
+  function u64(dv, at, v) { dv.setUint32(at, v % 4294967296, true); dv.setUint32(at + 4, Math.floor(v / 4294967296), true); }
+  // Same naming as the admin's ZIP: one folder per set when there is more than one set.
+  function zipEntries(items) {
+    var setOf = {}; data.sets.forEach(function (s) { s.items.forEach(function (it) { setOf[it.id] = s.name; }); });
+    var sets = {}; items.forEach(function (it) { sets[setOf[it.id]] = true; });
+    var dirs = Object.keys(sets).length > 1, used = {}, enc = new TextEncoder();
+    return items.map(function (it) {
+      var name = (dirs ? zipSafe(setOf[it.id]) + '/' : '') + zipSafe(it.fileName), base = name, n = 2;
+      while (used[name.toLowerCase()]) { name = base.replace(/(\.[^.\/]*)?$/, function (ext) { return ' (' + n + ')' + (ext || ''); }); n++; }
+      used[name.toLowerCase()] = true;
+      return { it: it, name: enc.encode(name), size: it.size || 0 };
+    });
+  }
+  function zipLayout(entries) {
+    var dataLen = entries.reduce(function (a, e) { return a + e.size; }, 0);
+    var names = entries.reduce(function (a, e) { return a + e.name.length; }, 0);
+    var classic = dataLen + names * 2 + entries.length * (30 + 16 + 46) + 22;
+    var z64 = classic > 0xFFFF0000 || entries.length > 65000 || entries.some(function (e) { return e.size >= 0xFFFFFFFF; });
+    return { z64: z64, size: z64 ? dataLen + names * 2 + entries.length * (50 + 24 + 74) + 56 + 20 + 22 : classic };
+  }
+  // The admin's "everything" ZIP, if it still matches the gallery exactly.
+  function readyZip() {
+    var all = allItems(); if (!all.length) return null;
+    var want = zipLayout(zipEntries(all)).size;
+    return (data.zips || []).find(function (z) { return / - Dream Big Media\.zip$/.test(z.fileName || '') && z.size === want; }) || null;
+  }
+  var ZIP_MEM_MAX = IS_PHONE ? 700 * 1024 * 1024 : 2048 * 1024 * 1024; // bigger selections are split into parts
+
   function openDownloadChoice() {
     var all = allItems(), favList = all.filter(function (it) { return favs[it.id]; });
     var pickList = all.filter(function (it) { return picked[it.id]; });
-    var total = all.reduce(function (a, it) { return a + (it.size || 0); }, 0);
-    var isAuto = function (z) { return / - Dream Big Media\.zip$/.test(z.fileName || ''); };
-    var zips = (data.zips || []).slice().sort(function (a, b) { return isAuto(b) - isAuto(a); }), zipFirst = zips.length && !pickList.length;
     var sizeOf = function (list) { return fmtSize(list.reduce(function (a, it) { return a + (it.size || 0); }, 0)); };
-    var allHow = IS_PHONE && CAN_SHARE_FILES ? ['Straight to my camera roll', all.length + ' files · saved in groups of 10, one tap per group']
-      : CAN_PICK_FOLDER ? ['Everything as separate files', all.length + ' files · ' + fmtSize(total) + ' · saved into a folder you choose']
-      : ['Everything as separate files', all.length + ' files · ' + fmtSize(total) + ' · your browser may ask to allow several downloads'];
+    var extra = (data.zips || []).filter(function (z) { return !/ - Dream Big Media\.zip$/.test(z.fileName || ''); });
+    var where = IS_PHONE ? 'one ZIP file, saved to your Files app' : 'one ZIP file';
+    var opt = function (v, on, title, sub) { return '<label class="opt"><input type="radio" name="dlWhat" value="' + v + '"' + (on ? ' checked' : '') + '><span>' + title + '<small>' + sub + '</small></span></label>'; };
     var html = '<p>Full-resolution originals, exactly as delivered. Nothing is compressed.</p>' +
-      (pickList.length ? '<label class="opt"><input type="radio" name="dlWhat" value="sel" checked><span>Photos I selected<small>' + pickList.length + ' files · ' + sizeOf(pickList) + '</small></span></label>' : '') +
-      zips.map(function (z, i) { return '<label class="opt"><input type="radio" name="dlWhat" value="zip:' + z.id + '"' + (zipFirst && i === 0 ? ' checked' : '') + '><span>' + (i === 0 ? 'Everything in one download' : esc(z.fileName)) + '<small>' + (i === 0 ? all.length + ' files · ' : '') + (z.size ? fmtSize(z.size) + ' · ' : '') + 'one ZIP file, one tap' + (IS_PHONE ? ', saves to your Files app' : '') + '</small></span></label>'; }).join('') +
-      '<label class="opt"><input type="radio" name="dlWhat" value="all"' + (pickList.length || zipFirst ? '' : ' checked') + '><span>' + allHow[0] + '<small>' + allHow[1] + '</small></span></label>' +
-      (favList.length ? '<label class="opt"><input type="radio" name="dlWhat" value="fav"><span>My favourites<small>' + favList.length + ' files · ' + sizeOf(favList) + '</small></span></label>' : '') +
+      (pickList.length && pickList.length < all.length ? opt('sel', true, 'Photos I selected', pickList.length + ' files · ' + sizeOf(pickList) + ' · ' + where) : '') +
+      opt('all', !(pickList.length && pickList.length < all.length), 'Everything', all.length + ' files · ' + sizeOf(all) + ' · ' + where) +
+      (favList.length ? opt('fav', false, 'My favourites', favList.length + ' files · ' + sizeOf(favList) + ' · ' + where) : '') +
+      extra.map(function (z) { return opt('zip:' + z.id, false, esc(z.fileName), (z.size ? fmtSize(z.size) + ' · ' : '') + 'ZIP file'); }).join('') +
       (pickList.length ? '' : '<p class="small" style="margin-top:6px">Only want some? Tap <b>Select</b> at the top, pick your photos, then Download.</p>') +
       '<div class="row"><button class="btn primary" id="dlGo">Download</button><button class="btn" data-close>Cancel</button></div>';
     dlShow('Download your gallery', html);
     $('dlGo').addEventListener('click', function () {
       var v = (document.querySelector('input[name=dlWhat]:checked') || {}).value || 'all';
       if (v.indexOf('zip:') === 0) { dlClose(); download(v.slice(4)); return; }
-      var chosen = v === 'fav' ? favList : v === 'sel' ? pickList : all;
-      startBulk(v === 'all' ? null : chosen.map(function (it) { return it.id; }), chosen);
+      startBulk(null, v === 'fav' ? favList : v === 'sel' ? pickList : all, v);
     });
   }
 
-  async function startBulk(ids, items) {
+  // Download several files as one ZIP.
+  async function startBulk(ids, items, kind) {
     dlCancel = false;
-    if (IS_PHONE && CAN_SHARE_FILES) return saveToPhone(items);
-    if (CAN_PICK_FOLDER) {
-      var dir;
-      try { dir = await window.showDirectoryPicker({ mode: 'readwrite', id: 'dbm-gallery', startIn: 'pictures' }); }
-      catch (e) { return; } // they cancelled the folder picker
-      var files = await links(ids); if (!files) return;
-      dlShow('Saving to your folder', '<p id="dlMsg">Starting…</p><div class="prog"><div id="dlBar"></div></div><p class="small" id="dlSub"></p><div class="row"><button class="btn" data-close>Stop</button></div>');
-      var total = files.reduce(function (a, f) { return a + (f.size || 0); }, 0) || 1, done = 0, bytes = 0, failed = [];
-      var sets = {}; files.forEach(function (f) { sets[f.set] = true; });
-      var useSub = Object.keys(sets).length > 1;
-      var queue = files.slice();
-      async function worker() {
-        while (queue.length && !dlCancel) {
-          var f = queue.shift();
+    var all = allItems();
+    if (items.length === 1) { if (IS_PHONE && CAN_SHARE_FILES) saveToPhone(items); else download(items[0].id); return; }
+    if (items.length === all.length) {
+      var ready = readyZip();
+      if (ready) { download(ready.id); return; }
+      kind = 'all';
+    }
+    var label = kind === 'fav' ? 'Favourites' : kind === 'all' ? '' : 'Selected';
+    var base = zipSafe(data.title) + (label ? ' - ' + label : '') + ' - Dream Big Media';
+    // Computers with a save dialog stream straight to disk (any size). Ask for the
+    // place first, while the browser still counts it as part of the tap.
+    var toDisk = !IS_PHONE && typeof window.showSaveFilePicker === 'function', handle = null;
+    if (toDisk) {
+      try { handle = await window.showSaveFilePicker({ suggestedName: base + '.zip', types: [{ description: 'ZIP file', accept: { 'application/zip': ['.zip'] } }] }); }
+      catch (e) { if (e && e.name === 'AbortError') return; toDisk = false; }
+    }
+    progUi('Preparing your download', 'Getting your files ready…');
+    var files = await links(items.map(function (it) { return it.id; }));
+    if (!files) { dlClose(); return; }
+    var urlOf = {}; files.forEach(function (f) { urlOf[f.id] = f.url; });
+    var entries = zipEntries(items.filter(function (it) { return urlOf[it.id]; }));
+    entries.forEach(function (e) { e.url = urlOf[e.it.id]; });
+    if (entries.length < items.length) { dlShow('Something went wrong', '<p>Some files couldn’t be prepared. Please refresh the page and try again.</p><div class="row"><button class="btn primary" data-close>OK</button></div>'); return; }
+
+    // Without a save dialog the ZIP is built in memory, split into parts if it is very large.
+    var parts = [], cur = [];
+    entries.forEach(function (e) {
+      if (!toDisk && cur.length && zipLayout(cur.concat([e])).size > ZIP_MEM_MAX) { parts.push(cur); cur = []; }
+      cur.push(e);
+    });
+    if (cur.length) parts.push(cur);
+    var grand = entries.reduce(function (a, e) { return a + e.size; }, 0), doneBytes = 0;
+    for (var p = 0; p < parts.length; p++) {
+      var name = base + (parts.length > 1 ? ' (part ' + (p + 1) + ' of ' + parts.length + ')' : '') + '.zip';
+      progUi(parts.length > 1 ? 'Preparing part ' + (p + 1) + ' of ' + parts.length : 'Preparing your download', 'Zipping ' + entries.length + ' full-resolution files…');
+      var sink = null, mem = [];
+      if (handle && toDisk) sink = await handle.createWritable();
+      var writer = { write: async function (chunk) { if (sink) await sink.write(chunk); else mem.push(chunk); } };
+      try {
+        await writeZip(parts[p], writer, function (got, msg) { progSet(doneBytes + got, grand, msg); });
+      } catch (err) {
+        if (sink) { try { await sink.abort(); } catch (x) {} }
+        if (dlCancel) { toast('Download cancelled.'); return; }
+        dlShow('Download didn’t finish', '<p>' + esc(err.message || 'The connection dropped.') + ' Check your connection and try again. Nothing was lost.</p><div class="row"><button class="btn primary" data-close>OK</button></div>');
+        return;
+      }
+      doneBytes += parts[p].reduce(function (a, e) { return a + e.size; }, 0);
+      if (sink) { await sink.close(); continue; }
+      var blob = new Blob(mem, { type: 'application/zip' }); mem = null;
+      var u = URL.createObjectURL(blob);
+      if (p === 0) nativeDownload(u, name);
+      else await new Promise(function (resolve) {
+        dlShow('Part ' + (p + 1) + ' of ' + parts.length + ' ready', '<p>Your download is big, so it comes in ' + parts.length + ' ZIP files. Tap to save part ' + (p + 1) + '.</p><div class="row"><button class="btn primary" id="partGo">Save part ' + (p + 1) + '</button></div>');
+        $('partGo').addEventListener('click', function () { nativeDownload(u, name); resolve(); });
+      });
+      setTimeout(function () { URL.revokeObjectURL(u); }, 300000);
+      if (p < parts.length - 1) {
+        await new Promise(function (resolve) {
+          dlShow('Part ' + (p + 1) + ' of ' + parts.length + ' saved', '<p>Next: part ' + (p + 2) + '.</p><div class="row"><button class="btn primary" id="partNext">Continue</button><button class="btn" data-close>Stop</button></div>');
+          $('partNext').addEventListener('click', resolve);
+        });
+        if (dlCancel) return;
+      }
+    }
+    var phoneTip = IS_PHONE ? '<p class="small" style="margin-top:8px">To put them in Photos: open the <b>Files</b> app › <b>Downloads</b> and tap the ZIP to unzip it. Open the folder, tap <b>Select › Select All</b>, then <b>Share › Save Images</b>. On Android, open <b>Files › Downloads</b> and tap the ZIP to extract it.</p>' : '';
+    dlShow('Downloaded', '<p>' + entries.length + ' full-resolution files saved as ' + (parts.length > 1 ? parts.length + ' ZIP files' : 'one ZIP file') + (handle && toDisk ? ' where you chose.' : ' in your Downloads.') + '</p>' + phoneTip + '<div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE);
+  }
+
+  // Writes a stored (uncompressed) ZIP: every file inside is byte-for-byte the original.
+  async function writeZip(entries, out, onProgress) {
+    var lay = zipLayout(entries), z64 = lay.z64;
+    var d = new Date(), dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    var offset = 0, got = 0;
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i]; e.offset = offset;
+      var h = new Uint8Array(30 + e.name.length + (z64 ? 20 : 0)), hv = new DataView(h.buffer);
+      hv.setUint32(0, 0x04034b50, true); hv.setUint16(4, z64 ? 45 : 20, true); hv.setUint16(6, 0x0808, true); hv.setUint16(8, 0, true);
+      hv.setUint16(10, dosTime, true); hv.setUint16(12, dosDate, true);
+      if (z64) { hv.setUint32(18, 0xFFFFFFFF, true); hv.setUint32(22, 0xFFFFFFFF, true); }
+      hv.setUint16(26, e.name.length, true); hv.setUint16(28, z64 ? 20 : 0, true); h.set(e.name, 30);
+      if (z64) { var x = 30 + e.name.length; hv.setUint16(x, 1, true); hv.setUint16(x + 2, 16, true); }
+      await out.write(h); offset += h.length;
+      var msg = 'File ' + (i + 1) + ' of ' + entries.length + ': ' + e.it.fileName;
+      // A file that fails is retried (never skipped), so the ZIP is always complete.
+      var crc, n;
+      for (var attempt = 1; ; attempt++) {
+        var chunks = [];
+        crc = 0xFFFFFFFF; n = 0;
+        try {
+          activeFetch++;
           try {
-            var folder = useSub ? await dir.getDirectoryHandle(f.set.replace(/[\\\/:*?"<>|]/g, '-').slice(0, 80) || 'Gallery', { create: true }) : dir;
-            var fh = await folder.getFileHandle(f.fileName.replace(/[\\\/:*?"<>|]/g, '-'), { create: true });
-            activeFetch++;
-            try {
-              var res = await fetch(f.url); if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
-              var w = await fh.createWritable(); var reader = res.body.getReader();
-              for (;;) { var r = await reader.read(); if (r.done) break; await w.write(r.value); bytes += r.value.byteLength; upd(); if (dlCancel) { await reader.cancel(); break; } }
-              await w.close();
-            } finally { activeFetch--; }
-          } catch (e) { failed.push(f.fileName); }
-          done++; upd();
+            var res = await fetch(e.url); if (!res.ok || !res.body) throw new Error('HTTP ' + res.status);
+            var reader = res.body.getReader();
+            for (;;) {
+              var r = await reader.read(); if (r.done) break;
+              if (dlCancel) { try { await reader.cancel(); } catch (z) {} throw new Error('cancelled'); }
+              crc = crcUpdate(crc, r.value); n += r.value.length; chunks.push(r.value);
+              onProgress(got + n, msg);
+            }
+          } finally { activeFetch--; }
+          if (n !== e.size) throw new Error(e.it.fileName + ' didn’t download completely.');
+          for (var c = 0; c < chunks.length; c++) await out.write(chunks[c]);
+          break;
+        } catch (err) {
+          if (dlCancel || err.message === 'cancelled') throw new Error('cancelled');
+          if (attempt >= 3) throw new Error('Couldn’t get ' + e.it.fileName + '.');
+          onProgress(got, 'Retrying ' + e.it.fileName + '…');
+          await new Promise(function (rs) { setTimeout(rs, attempt * 1500); });
         }
       }
-      function upd() {
-        if (!$('dlBar')) return;
-        $('dlBar').style.width = Math.min(100, bytes / total * 100).toFixed(1) + '%';
-        $('dlMsg').textContent = done + ' of ' + files.length + ' files saved';
-        $('dlSub').textContent = fmtSize(bytes) + ' of ' + fmtSize(total);
-      }
-      await Promise.all([worker(), worker(), worker()]);
-      if (dlCancel) { toast('Download stopped. Files already saved are in your folder.'); return; }
-      dlShow(failed.length ? 'Almost done' : 'All saved', '<p>' + (failed.length ? (files.length - failed.length) + ' of ' + files.length + ' files saved. These didn’t finish: ' + esc(failed.slice(0, 5).join(', ')) + (failed.length > 5 ? '…' : '') + '. Try again to fetch them.' : 'All ' + files.length + ' full-resolution files are in the folder you chose.') + '</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE);
-      return;
+      got += n; offset += n;
+      e.crc = (crc ^ 0xFFFFFFFF) >>> 0;
+      var dd = new Uint8Array(z64 ? 24 : 16), dv = new DataView(dd.buffer);
+      dv.setUint32(0, 0x08074b50, true); dv.setUint32(4, e.crc, true);
+      if (z64) { u64(dv, 8, e.size); u64(dv, 16, e.size); } else { dv.setUint32(8, e.size, true); dv.setUint32(12, e.size, true); }
+      await out.write(dd); offset += dd.length;
     }
-    // Other browsers: download the originals one after another.
-    var list = await links(ids); if (!list) return;
-    dlShow('Downloading', '<p id="dlMsg">Starting…</p><div class="prog"><div id="dlBar"></div></div><p class="small">If your browser asks to allow multiple downloads, choose Allow.</p><div class="row"><button class="btn" data-close>Stop</button></div>');
-    for (var i = 0; i < list.length && !dlCancel; i++) {
-      var a = document.createElement('a'); a.href = list[i].url; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove();
-      if ($('dlMsg')) { $('dlMsg').textContent = (i + 1) + ' of ' + list.length + ' started'; $('dlBar').style.width = ((i + 1) / list.length * 100) + '%'; }
-      await new Promise(function (r) { setTimeout(r, 1200); });
+    var cdStart = offset, cdLen = 0;
+    for (var j = 0; j < entries.length; j++) {
+      var q = entries[j], ex = z64 ? 28 : 0, ch = new Uint8Array(46 + q.name.length + ex), cv = new DataView(ch.buffer);
+      cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 45, true); cv.setUint16(6, z64 ? 45 : 20, true); cv.setUint16(8, 0x0808, true); cv.setUint16(10, 0, true);
+      cv.setUint16(12, dosTime, true); cv.setUint16(14, dosDate, true); cv.setUint32(16, q.crc, true);
+      cv.setUint32(20, z64 ? 0xFFFFFFFF : q.size, true); cv.setUint32(24, z64 ? 0xFFFFFFFF : q.size, true);
+      cv.setUint16(28, q.name.length, true); cv.setUint16(30, ex, true); cv.setUint32(42, z64 ? 0xFFFFFFFF : q.offset, true);
+      ch.set(q.name, 46);
+      if (z64) { var y = 46 + q.name.length; cv.setUint16(y, 1, true); cv.setUint16(y + 2, 24, true); u64(cv, y + 4, q.size); u64(cv, y + 12, q.size); u64(cv, y + 20, q.offset); }
+      await out.write(ch); cdLen += ch.length;
     }
-    if (!dlCancel) dlShow('Downloads started', '<p>All ' + list.length + ' files have been sent to your Downloads folder.</p><div class="row"><button class="btn primary" data-close>Done</button></div>' + NUDGE);
+    offset += cdLen;
+    if (z64) {
+      var e64 = new Uint8Array(76), ev = new DataView(e64.buffer);
+      ev.setUint32(0, 0x06064b50, true); u64(ev, 4, 44); ev.setUint16(12, 45, true); ev.setUint16(14, 45, true);
+      u64(ev, 24, entries.length); u64(ev, 32, entries.length); u64(ev, 40, cdLen); u64(ev, 48, cdStart);
+      ev.setUint32(56, 0x07064b50, true); u64(ev, 64, offset); ev.setUint32(72, 1, true);
+      await out.write(e64); offset += 76;
+    }
+    var eo = new Uint8Array(22), eov = new DataView(eo.buffer);
+    eov.setUint32(0, 0x06054b50, true);
+    eov.setUint16(8, z64 ? 0xFFFF : entries.length, true); eov.setUint16(10, z64 ? 0xFFFF : entries.length, true);
+    eov.setUint32(12, z64 ? 0xFFFFFFFF : cdLen, true); eov.setUint32(16, z64 ? 0xFFFFFFFF : cdStart, true);
+    await out.write(eo); offset += 22;
+    if (offset !== lay.size) throw new Error('The ZIP didn’t check out. Please try again.');
   }
 
   // Phones: fetch originals in small groups, then a tap opens the share sheet
@@ -908,6 +1035,7 @@
         base += f.size || 0;
       }
       if (dlCancel) return;
+      if (!got.length) { download(batch[0].id); return; }
       var last = b === batches.length - 1;
       var savedBefore = startAt, pctAll = Math.round(startAt / small.length * 100);
       dlShow(many ? 'Group ' + (b + 1) + ' of ' + batches.length + ' ready' : 'Ready to save',
