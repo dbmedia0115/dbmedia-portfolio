@@ -190,6 +190,7 @@
       </div>
       <div class="row" style="margin-top:14px">
         <label style="margin:0;display:flex;gap:6px;align-items:center;text-transform:none;font-weight:500"><input type="checkbox" id="dlToggle"> Allow downloads</label>
+        <label style="margin:0;display:flex;gap:6px;align-items:center;text-transform:none;font-weight:500" title="Off: the link opens the gallery straight away. Clients still enter their name and email before downloading."><input type="checkbox" id="pinToggle"> Require PIN</label>
         <button class="btn" id="extendBtn">+30 days</button>
         <button class="btn danger" id="deleteGalleryBtn">Delete gallery &amp; files</button>
       </div>
@@ -454,6 +455,8 @@
     $('publishBtn').textContent = g.status === 'live' ? 'Unpublish' : 'Publish';
     $('publishBtn').disabled = g.status === 'expired';
     $('dlToggle').checked = g.allow_downloads;
+    $('pinToggle').checked = g.pin_required !== false;
+    $('inviteBtn').textContent = g.pin_required === false ? 'Copy invite' : 'Copy invite + new PIN';
     $('viewBtn').href = SITE + '/gallery.html?g=' + g.slug;
     $('regHint').textContent = 'Upload into galleries/' + g.id + '/video/ or /zip/';
   }
@@ -469,10 +472,18 @@
       return;
     }
     if (!items.length) { toast('Upload some files first.'); return; }
-    if (!current.pin_hash) toast('Tip: use “Copy invite + new PIN” next — the gallery has no PIN yet.');
+    if (current.pin_required !== false && !current.pin_hash) toast('Tip: use “Copy invite + new PIN” next — the gallery has no PIN yet.');
     if (await patchGallery({ status: 'live' })) { toast('Live. Expires ' + fmtDate(current.expires_at) + '.'); if (zipNeedsUpdate()) buildZip(); }
   });
   $('dlToggle').addEventListener('change', function () { patchGallery({ allow_downloads: this.checked }); });
+  $('pinToggle').addEventListener('change', async function () {
+    var on = this.checked;
+    if (!on && !confirm('Turn off the PIN? Anyone with the link can view the gallery. Clients still have to enter their name and email before they can download.')) { this.checked = true; return; }
+    if (await patchGallery({ pin_required: on })) {
+      show('inviteBox', false);
+      toast(on ? (current.pin_hash ? 'PIN required again. The last PIN you sent still works.' : 'PIN required. Use “Copy invite + new PIN” to make one.') : 'PIN off. The link opens the gallery; downloads still ask for an email.');
+    } else this.checked = !on;
+  });
   $('extendBtn').addEventListener('click', async function () {
     var base = current.expires_at ? new Date(current.expires_at + 'T12:00:00') : new Date();
     base.setDate(base.getDate() + 30);
@@ -494,26 +505,29 @@
   // ---------- invite ----------
   function newPin() { var a = new Uint32Array(1); crypto.getRandomValues(a); return String(1000 + (a[0] % 9000)); }
   $('inviteBtn').addEventListener('click', async function () {
-    if (current.status !== 'live' && !confirm('This gallery is not published yet. Make the PIN anyway?')) return;
-    var pin = newPin();
-    var r = await sb.rpc('set_gallery_pin', { p_gallery_id: current.id, p_pin: pin });
-    if (r.error) { toast(r.error.message); return; }
-    current.pin_hash = 'set';
+    var noPin = current.pin_required === false, pin = '';
+    if (current.status !== 'live' && !confirm(noPin ? 'This gallery is not published yet, so the link won’t open until you publish. Copy the invite anyway?' : 'This gallery is not published yet. Make the PIN anyway?')) return;
+    if (!noPin) {
+      pin = newPin();
+      var r = await sb.rpc('set_gallery_pin', { p_gallery_id: current.id, p_pin: pin });
+      if (r.error) { toast(r.error.message); return; }
+      current.pin_hash = 'set';
+    }
     var link = SITE + '/gallery.html?g=' + current.slug;
     var first = (current.client_name || '').split(' ')[0] || 'there';
     var text = 'Hi ' + first + ',\n\n' +
       'Thank you so much for choosing Dream Big Media. It was a pleasure working with you, and your photos are ready.\n\n' +
       'View and download them here:\n' + link + '\n\n' +
-      'Your PIN: ' + pin + '\n\n' +
+      (pin ? 'Your PIN: ' + pin + '\n\n' : '') +
       'Everything is in full resolution, ready to print, post and share.' +
       (current.expires_at ? ' The gallery stays open until ' + fmtDate(current.expires_at) + ', so save your favourites before then.' : '') + '\n\n' +
       'Enjoy your images!\n\nSamuel\nDream Big Media';
-    $('pinShow').textContent = pin;
+    $('pinShow').textContent = pin; $('pinShow').classList.toggle('hidden', !pin); $('pinShow').previousElementSibling.classList.toggle('hidden', !pin);
     $('inviteText').value = text;
     var subject = 'Your photos are ready';
     $('mailInvite').href = 'mailto:' + encodeURIComponent(current.client_email || '') + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(text);
     show('inviteBox', true);
-    try { await navigator.clipboard.writeText(text); toast('Invite copied. PIN ' + pin); } catch (e) { toast('PIN ' + pin + ' — copy the text below.'); }
+    try { await navigator.clipboard.writeText(text); toast(pin ? 'Invite copied. PIN ' + pin : 'Invite copied.'); } catch (e) { toast(pin ? 'PIN ' + pin + ' — copy the text below.' : 'Copy the text below.'); }
   });
   $('copyInvite').addEventListener('click', async function () { await navigator.clipboard.writeText($('inviteText').value); toast('Copied.'); });
 
