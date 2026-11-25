@@ -442,18 +442,38 @@
     $('pinForm').classList.add('hidden');
   } else {
     var saved = read(KEY);
-    if (saved) resume(saved); else $('pin').focus();
+    // Hide the PIN box until we know whether this gallery needs one.
+    $('pinForm').classList.add('hidden'); $('gateText').textContent = 'Opening your gallery…';
+    if (saved) resume(saved);
     // Show the gallery's name and cover photo above the PIN box (no other photos until the PIN is right).
-    call({ action: 'cover', slug: slug }).then(function (c) {
-      if (c.error || !$('app').classList.contains('hidden')) return;
+    var coverInfo = call({ action: 'cover', slug: slug }).then(function (c) {
+      if (c.error) return c;
       if (c.title) $('gateTitle').textContent = c.title;
       if (c.cover) { $('gateBg').style.backgroundImage = 'url("' + c.cover + '")'; $('gateBg').style.backgroundPosition = c.focus || 'center'; $('gateBg').classList.remove('hidden'); $('gate').classList.add('has-cover'); }
-    }).catch(function () {});
+      return c;
+    }).catch(function () { return { error: 'offline' }; });
+    if (!saved) askForPin();
+  }
+
+  // PIN galleries show the PIN box; galleries with "Require PIN" off open straight away.
+  async function askForPin() {
+    var c = await coverInfo;
+    if (!$('app').classList.contains('hidden')) return;
+    // (an expired gallery's cover isn't shown, so ask the server which message to show)
+    if (c && (c.pinRequired === false || c.error === 'not_found')) {
+      var d = await call({ action: 'open', slug: slug });
+      if (!d.error) { start(d); return; }
+      if (d.error === 'expired') { showExpired(); return; }
+      if (d.error === 'not_found') { $('gateText').textContent = 'This gallery isn’t available. Check the link in your email.'; return; }
+      if (d.error !== 'wrong_pin' && d.error !== 'locked') { $('gateText').textContent = 'Something went wrong. Please refresh the page.'; return; }
+    }
+    $('gateText').textContent = 'Enter the PIN from your email to view your photos and films.';
+    $('pinForm').classList.remove('hidden'); $('pin').focus();
   }
 
   async function resume(token) {
     var d = await call({ action: 'resume', slug: slug, token: token });
-    if (d.error) { store(KEY, null); if (d._status === 410) showExpired(); else { $('pin').focus(); } return; }
+    if (d.error) { store(KEY, null); if (d._status === 410) showExpired(); else askForPin(); return; }
     start(d);
   }
 
@@ -696,7 +716,7 @@
     progUi('Downloading', 'Getting ' + esc(info.name) + ' ready…');
     var d = await call({ action: 'download', token: data.token, itemId: itemId });
     if (d.error === 'email_required') { dlClose(); data.registered = false; needEmail(function () { download(itemId); }); return; }
-    if (d.error) { dlClose(); toast(d.error === 'session_ended' ? 'Your session ended — refresh the page and enter your PIN.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return; }
+    if (d.error) { dlClose(); toast(d.error === 'session_ended' ? 'Your session ended — refresh the page to carry on.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return; }
     var label = 'Downloading ' + info.name;
     var zipTip = /\.zip$/i.test(info.name) && IS_PHONE ? '<p class="small" style="margin-top:8px">To put them in Photos: open the <b>Files</b> app › <b>Downloads</b> and tap the ZIP to unzip it. Open the folder, tap <b>Select › Select All</b>, then <b>Share › Save Images</b>. On Android, open <b>Files › Downloads</b> and tap the ZIP to extract it.</p>' : '';
     try {
@@ -759,7 +779,7 @@
   async function links(ids) {
     var d = await call({ action: 'download_many', token: data.token, itemIds: ids });
     if (d.error === 'email_required') { data.registered = false; needEmail(function () { toast('Thanks! Tap Download again.'); }); return null; }
-    if (d.error) { toast(d.error === 'session_ended' ? 'Your session ended — refresh the page and enter your PIN.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return null; }
+    if (d.error) { toast(d.error === 'session_ended' ? 'Your session ended — refresh the page to carry on.' : d.error === 'downloads_off' ? 'Downloads are turned off for this gallery.' : 'Download failed. Please try again.'); return null; }
     return d.files;
   }
 
@@ -960,7 +980,7 @@
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { $('regMsg').textContent = 'Please add a valid email.'; return; }
       this.disabled = true; $('regMsg').textContent = 'Saving…';
       var d = await call({ action: 'register', token: data.token, name: name, email: em, marketing: $('regNews').checked });
-      if (d.error) { this.disabled = false; $('regMsg').textContent = d.error === 'session_ended' ? 'Your session ended. Refresh the page and enter your PIN.' : 'Couldn’t save that. Please try again.'; return; }
+      if (d.error) { this.disabled = false; $('regMsg').textContent = d.error === 'session_ended' ? 'Your session ended. Refresh the page to carry on.' : 'Couldn’t save that. Please try again.'; return; }
       data.registered = true;
       storeLocal('dbm_gallery_name', name);
       if (!email) { email = em.toLowerCase(); storeLocal('dbm_gallery_email', email); }
@@ -976,9 +996,10 @@
     function message(withPin) {
       return 'Here are the photos from ' + data.title + ' by Dream Big Media: ' + url + (withPin && pin ? '\nPIN: ' + pin : '');
     }
-    dlShow('Share this gallery', '<p>Send the link to family and friends. They’ll need the PIN to open it.</p>' +
+    var noPin = data.pinRequired === false; if (noPin) pin = '';
+    dlShow('Share this gallery', '<p>' + (noPin ? 'Send the link to family and friends. It opens straight away, no PIN needed.' : 'Send the link to family and friends. They’ll need the PIN to open it.') + '</p>' +
       '<div class="sharebox"><input id="shLink" readonly value="' + esc(url) + '"><button class="btn" id="shCopy">Copy</button></div>' +
-      (pin ? '<label class="chk" style="margin-top:10px"><input type="checkbox" id="shPin" checked> Include the PIN (' + esc(pin) + ') in the message</label>' : '<p class="small" style="margin-top:10px">Remember to send them the PIN from your email too.</p>') +
+      (noPin ? '' : pin ? '<label class="chk" style="margin-top:10px"><input type="checkbox" id="shPin" checked> Include the PIN (' + esc(pin) + ') in the message</label>' : '<p class="small" style="margin-top:10px">Remember to send them the PIN from your email too.</p>') +
       '<div class="row">' + (navigator.share ? '<button class="btn primary" id="shNative">Share…</button>' : '') +
       '<a class="btn" id="shWa" target="_blank" rel="noopener">WhatsApp</a><a class="btn" id="shMail">Email</a></div>' +
       '<div class="row"><button class="btn" data-close>Close</button></div>');
@@ -1027,7 +1048,7 @@
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { $('rvMsg').textContent = 'Please add a valid email.'; return; }
       this.disabled = true; $('rvMsg').textContent = 'Sending…';
       var d = await call({ action: 'review', token: data.token, name: name, email: em, rating: rating, text: text, canPublish: pub });
-      if (d.error) { this.disabled = false; $('rvMsg').textContent = d.error === 'session_ended' ? 'Your session ended. Refresh the page and enter your PIN.' : 'Couldn’t send that. Please try again.'; return; }
+      if (d.error) { this.disabled = false; $('rvMsg').textContent = d.error === 'session_ended' ? 'Your session ended. Refresh the page to carry on.' : 'Couldn’t send that. Please try again.'; return; }
       if (!email) { email = em.toLowerCase(); storeLocal('dbm_gallery_email', email); }
       try { gtag('event', 'gallery_review', { rating: rating }); } catch (e) {}
       dlShow('Thank you!', '<p>Thanks ' + esc(name.split(' ')[0]) + ', your review means a lot.</p>' +
@@ -1090,7 +1111,7 @@
         this.disabled = true; $('prMsg').textContent = 'Sending…';
         var d = await call({ action: 'print_request', token: data.token, name: name, email: em, phone: phone, notes: notes,
           items: rows.map(function (r) { return { itemId: r.it.id, product: r.product, size: r.size, qty: r.qty }; }) });
-        if (d.error) { this.disabled = false; $('prMsg').textContent = d.error === 'session_ended' ? 'Your session ended. Refresh the page and enter your PIN.' : 'Couldn’t send that. Please try again.'; return; }
+        if (d.error) { this.disabled = false; $('prMsg').textContent = d.error === 'session_ended' ? 'Your session ended. Refresh the page to carry on.' : 'Couldn’t send that. Please try again.'; return; }
         if (!email) { email = em.toLowerCase(); storeLocal('dbm_gallery_email', email); }
         var lines = d.items.map(function (x) { return x.qty + ' × ' + x.size + ' ' + x.product + ' — ' + x.fileName + (x.set ? ' (' + x.set + ')' : ''); }).join('\n');
         try { gtag('event', 'print_request', { items: d.items.length }); } catch (e) {}
