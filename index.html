@@ -1257,7 +1257,7 @@
 
   <section class="dbm-section dbm-testimonials" id="dbmReviewsSection" style="display:none;">
     <h2 class="dbm-section-title dbm-display">What clients say</h2>
-    <div class="dbm-google-reviews"><script defer async src='https://cdn.trustindex.io/loader.js?c27a0518665d74776216bc54901'></script></div>
+    <div class="dbm-google-reviews"></div>
     <h3 class="dbm-more-reviews">More kind words</h3>
     <div id="dbmReviewsList" class="dbm-testimonials-grid"></div>
   </section>
@@ -1676,5 +1676,16 @@ Most of my time goes into the edit. Colour, pacing, the small details. That's wh
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.1/dist/umd/supabase.min.js" integrity="sha384-rONULF7BcIpU+mBrW9/e9DhAVbCUwcewd5ivsb4/z3qqi1anKKkZ+KZpFRHHM3pG" crossorigin="anonymous"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
+  <script id="dbmMoveReviews">
+  // One Trustindex widget per page: move it into whichever reviews box is currently visible
+  setInterval(function () {
+    var w = document.querySelector('.ti-widget');
+    if (!w) return;
+    var boxes = document.querySelectorAll('.dbm-google-reviews');
+    for (var i = 0; i < boxes.length; i++) {
+      if (boxes[i].offsetParent !== null) { if (!boxes[i].contains(w)) boxes[i].appendChild(w); break; }
+    }
+  }, 400);
+  </script>
 </body>
 </html>
