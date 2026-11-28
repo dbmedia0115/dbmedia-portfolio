@@ -41,6 +41,17 @@
   .ph { border:1.5px solid var(--line); background:#fff; }
   .ph .im { position:relative; aspect-ratio:3/2; background:#eee; }
   .ph img { width:100%; height:100%; object-fit:cover; display:block; }
+  .fx-back { position:fixed; inset:0; background:rgba(10,10,10,.7); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px; }
+  .fx-box { background:#fff; max-width:900px; width:100%; max-height:92vh; overflow:auto; padding:18px; border:2px solid var(--ink); }
+  .fx-box h3 { margin:0 0 4px; } .fx-box p { margin:0 0 12px; font-size:13px; color:var(--muted); }
+  .fx-row { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
+  .fx-pick { position:relative; flex:1 1 380px; cursor:crosshair; line-height:0; }
+  .fx-pick img { width:100%; height:auto; display:block; user-select:none; -webkit-user-drag:none; }
+  .fx-dot { position:absolute; width:26px; height:26px; margin:-13px 0 0 -13px; border:3px solid #fff; border-radius:50%; box-shadow:0 0 0 2px var(--accent), 0 2px 8px rgba(0,0,0,.5); pointer-events:none; }
+  .fx-prev { flex:0 1 260px; } .fx-prev .lbl { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+  .fx-prev .crop { aspect-ratio:3/2; overflow:hidden; border:1.5px solid var(--line); } .fx-prev .crop img { width:100%; height:100%; object-fit:cover; display:block; }
+  .fx-acts { display:flex; gap:8px; margin-top:14px; justify-content:flex-end; }
+  .fx-acts button { padding:9px 16px; font:700 12px 'Inter',sans-serif; text-transform:uppercase; border:2px solid var(--ink); background:#fff; cursor:pointer; } .fx-acts .go { background:var(--ink); color:#fff; }
   .ph .num { position:absolute; left:5px; top:5px; background:var(--ink); color:#fff; font-size:11px; font-weight:700; padding:2px 6px; }
   .ph .cov { position:absolute; right:5px; top:5px; background:var(--accent); color:#fff; font-size:10px; font-weight:700; padding:2px 6px; text-transform:uppercase; }
   .ph input { border:0; border-top:1px solid var(--line); font-size:13px; padding:7px 8px; }
@@ -307,10 +318,11 @@
     var cover = post.cover_url || (imgs[0] && imgs[0].url);
     $('photos').innerHTML = imgs.map(function (im, i) {
       var isCover = im.url === cover;
-      return '<div class="ph" data-i="' + i + '"><div class="im"><img src="' + esc(im.url) + '" alt="" loading="lazy"><span class="num">' + (i + 1) + '</span>' + (isCover ? '<span class="cov">Cover</span>' : '') + '</div>' +
+      var op = (im.fx != null || im.fy != null) ? ' style="object-position:' + (im.fx != null ? im.fx : 50) + '% ' + (im.fy != null ? im.fy : 50) + '%"' : '';
+      return '<div class="ph" data-i="' + i + '"><div class="im"><img src="' + esc(im.url) + '" alt="" loading="lazy"' + op + '><span class="num">' + (i + 1) + '</span>' + (isCover ? '<span class="cov">Cover</span>' : '') + '</div>' +
         '<input type="text" data-cap placeholder="Caption (optional)" maxlength="200" value="' + esc(im.caption || '') + '">' +
         '<div class="acts"><button data-act="left" title="Move earlier">←</button><button data-act="right" title="Move later">→</button><button data-act="place" title="Put this photo where your cursor is in the story">Place</button>' +
-        '<button data-act="cover">' + (isCover ? '✓ Cover' : 'Cover') + '</button><button data-act="remove" style="color:#8c1d18">Remove</button></div></div>';
+        '<button data-act="cover">' + (isCover ? '✓ Cover' : 'Cover') + '</button><button data-act="focus" title="Choose which part of the photo stays in view when it is cropped">Focus</button><button data-act="remove" style="color:#8c1d18">Remove</button></div></div>';
     }).join('');
   }
   $('photos').addEventListener('click', async function (e) {
@@ -319,6 +331,7 @@
     if (act === 'left' && i > 0) { imgs.splice(i - 1, 0, imgs.splice(i, 1)[0]); }
     else if (act === 'right' && i < imgs.length - 1) { imgs.splice(i + 1, 0, imgs.splice(i, 1)[0]); }
     else if (act === 'cover') { post.cover_url = imgs[i].url; }
+    else if (act === 'focus') { openFocus(i); return; }
     else if (act === 'place') {
       var ta = $('fBody'), pos = ta.selectionStart != null ? ta.selectionStart : ta.value.length, tag = '\n\n[photo ' + (i + 1) + ']\n\n';
       ta.value = (ta.value.slice(0, pos).replace(/\s+$/, '') + tag + ta.value.slice(pos).replace(/^\s+/, '')).replace(/^\s+/, '');
@@ -341,6 +354,35 @@
     post.images[i].caption = e.target.value.slice(0, 200);
     dirty = true; renderStatus(); clearTimeout(renderPreview._h); renderPreview._h = setTimeout(renderPreview, 300);
   });
+  // ---------- focus point (where the photo stays centred when cropped) ----------
+  function openFocus(i) {
+    var im = post.images[i], fx = im.fx != null ? im.fx : 50, fy = im.fy != null ? im.fy : 50;
+    var back = document.createElement('div'); back.className = 'fx-back';
+    back.innerHTML = '<div class="fx-box"><h3>Choose the focus point</h3><p>Click the part of the photo that matters most (a face, the product). Crops on the blog page and cards keep that spot in view.</p>' +
+      '<div class="fx-row"><div class="fx-pick"><img src="' + esc(im.url) + '" alt=""><span class="fx-dot"></span></div>' +
+      '<div class="fx-prev"><div class="lbl">Blog card preview</div><div class="crop"><img src="' + esc(im.url) + '" alt=""></div></div></div>' +
+      '<div class="fx-acts"><button data-x="reset">Reset to centre</button><button data-x="cancel">Cancel</button><button class="go" data-x="save">Save focus</button></div></div>';
+    document.body.appendChild(back);
+    var dot = back.querySelector('.fx-dot'), prev = back.querySelector('.crop img'), pick = back.querySelector('.fx-pick');
+    function show() { dot.style.left = fx + '%'; dot.style.top = fy + '%'; prev.style.objectPosition = fx + '% ' + fy + '%'; }
+    show();
+    pick.addEventListener('click', function (e) {
+      var r = pick.getBoundingClientRect();
+      fx = Math.round(Math.max(0, Math.min(100, (e.clientX - r.left) / r.width * 100)));
+      fy = Math.round(Math.max(0, Math.min(100, (e.clientY - r.top) / r.height * 100)));
+      show();
+    });
+    back.addEventListener('click', async function (e) {
+      var x = e.target.getAttribute && e.target.getAttribute('data-x');
+      if (e.target === back || x === 'cancel') { back.remove(); return; }
+      if (x === 'reset') { fx = 50; fy = 50; show(); return; }
+      if (x === 'save') {
+        if (fx === 50 && fy === 50) { delete im.fx; delete im.fy; } else { im.fx = fx; im.fy = fy; }
+        back.remove(); renderPhotos(); renderPreview(); await savePhotos(); toast('Focus point saved.');
+      }
+    });
+  }
+
   // Photo changes save straight away so uploaded files are never lost.
   async function savePhotos() {
     var r = await sb.from('blog_posts').update({ images: post.images, cover_url: post.cover_url || null }).eq('id', post.id);
