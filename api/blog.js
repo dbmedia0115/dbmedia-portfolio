@@ -91,8 +91,12 @@ const FOOT = `<footer><div class="wrap">Dream Big Media — Nottingham, UK · <a
 
 function card(p) {
   const img = F.safeImg(p.cover_url) || F.safeImg((p.images || [])[0] && p.images[0].url);
+  const ci = (p.images || []).find(i => i && i.url === img) || {};
+  const fx = Number.isFinite(+ci.fx) ? Math.max(0, Math.min(100, +ci.fx)) : 50;
+  const fy = Number.isFinite(+ci.fy) ? Math.max(0, Math.min(100, +ci.fy)) : 50;
+  const pos = (fx !== 50 || fy !== 50) ? ` style="object-position:${fx}% ${fy}%"` : '';
   const meta = [F.fmtDate(p.event_date || p.published_at), p.location].filter(Boolean).join(' · ');
-  return `<a class="pc" href="/blog/${esc(p.slug)}">${img ? `<div class="im"><img src="${img}" alt="${esc(p.title)}" loading="lazy"></div>` : ''}<div class="tx"><div class="meta">${esc(meta)}</div><h2>${esc(p.title)}</h2><p>${esc(F.excerptOf(p))}</p></div></a>`;
+  return `<a class="pc" href="/blog/${esc(p.slug)}">${img ? `<div class="im"><img src="${img}" alt="${esc(p.title)}" loading="lazy"${pos}></div>` : ''}<div class="tx"><div class="meta">${esc(meta)}</div><h2>${esc(p.title)}</h2><p>${esc(F.excerptOf(p))}</p></div></a>`;
 }
 
 const ICONS = {
